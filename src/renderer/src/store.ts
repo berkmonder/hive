@@ -88,7 +88,7 @@ export function subscribeAgentData(agentId: string, fn: DataListener): () => voi
 export const useStore = create<Store>((set, get) => ({
   ready: false,
   platform: 'darwin',
-  app: { projects: [], agents: [], providers: [], prompts: [], roles: [], servers: [], settings: DEFAULT_SETTINGS, tasks: [], schedules: [], skills: [], mcpServers: [], boardPrompts: { todo: '', doing: '', done: '' }, memory: {}, projectSettings: {}, workflows: [], workflowRuns: [] },
+  app: { projects: [], agents: [], providers: [], prompts: [], roles: [], servers: [], settings: DEFAULT_SETTINGS, tasks: [], schedules: [], skills: [], mcpServers: [], boardPrompts: { todo: '', doing: '', done: '' }, memory: {}, projectSettings: {}, workflows: [], workflowRuns: [], ideas: [], triggers: [] },
   serverRuntimes: {},
   runtimes: {},
   lastLines: {},

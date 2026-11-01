@@ -13,6 +13,7 @@ import { ServerManager, suggestServers } from './servers'
 import { usageReport } from './usage'
 import { registerFeatures } from './features'
 import { registerAutomation } from './automation'
+import { registerExtras } from './extras'
 import { utf8Locale } from './agents'
 import { childrenOf, handleMcpHttp, initTeam, mcpArgsFor, wouldCycle } from './team'
 import { Agent, AgentPatch, AgentRuntime, AppSettings, DevServer, Provider, NewAgentInput, Project, RoleDef, SavedPrompt } from '@shared/types'
@@ -44,6 +45,7 @@ let agents: AgentManager
 let servers: ServerManager
 let features: ReturnType<typeof registerFeatures> | null = null
 let automation: ReturnType<typeof registerAutomation> | null = null
+let extras: ReturnType<typeof registerExtras> | null = null
 
 function send(channel: string, payload: unknown): void {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
@@ -280,7 +282,13 @@ function registerIpc(): void {
   ipcMain.on('agent:resize', (_e, id: string, cols: number, rows: number) => agents.resize(id, cols, rows))
 
   ipcMain.handle('git:summary', (_e, id: string) => git.summary(agentCwd(findAgent(id))))
-  ipcMain.handle('git:commit', (_e, id: string, msg: string) => git.commitAll(agentCwd(findAgent(id)), msg))
+  ipcMain.handle('git:commit', async (_e, id: string, msg: string) => {
+    const cwd = agentCwd(findAgent(id))
+    const hash = await git.commitAll(cwd, msg)
+    // keep the conversation that produced the commit (git notes --ref=hive)
+    if (hash && getState().settings.commitContext) await extras?.commitNote(id, cwd, hash)
+    return hash
+  })
 
   ipcMain.handle('git:merge', (_e, id: string) => {
     const a = findAgent(id)
@@ -514,6 +522,7 @@ app.whenReady().then(async () => {
   const fctx = { agents, servers, win: () => win, send, broadcastState, startAgent, findAgent, findProject, agentCwd }
   features = registerFeatures(fctx)
   automation = registerAutomation(fctx)
+  extras = registerExtras(fctx)
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -527,6 +536,7 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   features?.dispose()
   automation?.dispose()
+  extras?.dispose()
   agents?.dispose()
   servers?.dispose()
   stopHookServer()

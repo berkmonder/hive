@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer, IpcRendererEvent, webFrame } from 'electron
 import type { UsageReport } from '@shared/usage'
 import type { Conversation } from '@shared/chat'
 import type { ProcInfo } from '@shared/procs'
-import type { AgentRuntime, AppState, GitSummary, NewAgentInput, Agent, AgentPatch, Project, TeamEvent, RoleDef, SavedPrompt, DevServer, ServerRuntime, AppSettings, Provider, Task, TaskStatus, Schedule, Skill, McpServerDef, ProjectSettings, TestResult, Workflow, WorkflowRun, PlanReview, Conflict } from '@shared/types'
+import type { AgentRuntime, AppState, GitSummary, NewAgentInput, Agent, AgentPatch, Project, TeamEvent, RoleDef, SavedPrompt, DevServer, ServerRuntime, AppSettings, Provider, Task, TaskStatus, Schedule, Skill, McpServerDef, ProjectSettings, TestResult, Workflow, WorkflowRun, PlanReview, Conflict, Trigger, PickedElement } from '@shared/types'
 
 function on<T>(channel: string, cb: (payload: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, payload: T): void => cb(payload)
@@ -106,6 +106,7 @@ const api = {
   },
   media: {
     screenshot: (): Promise<{ path: string; dataUrl: string } | null> => ipcRenderer.invoke('media:screenshot'),
+    readImage: (path: string): Promise<string> => ipcRenderer.invoke('media:readImage', path),
     saveImage: (data: Uint8Array, ext: string): Promise<{ path: string; dataUrl: string }> => ipcRenderer.invoke('media:saveImage', data, ext),
     micAccess: (): Promise<boolean> => ipcRenderer.invoke('media:micAccess'),
     transcribe: (wav: Uint8Array): Promise<string> => ipcRenderer.invoke('media:transcribe', wav),
@@ -133,6 +134,17 @@ const api = {
     remove: (id: string): Promise<void> => ipcRenderer.invoke('workflows:remove', id),
     run: (id: string, input: string): Promise<string> => ipcRenderer.invoke('workflows:run', id, input),
     stop: (runId: string): Promise<void> => ipcRenderer.invoke('workflows:stop', runId)
+  },
+  extras: {
+    pick: (url: string): Promise<PickedElement | null> => ipcRenderer.invoke('preview:pick', url),
+    cancelPick: (url: string): Promise<void> => ipcRenderer.invoke('preview:cancelPick', url),
+    analyzeIdeas: (projectId: string, raw: string): Promise<number> => ipcRenderer.invoke('ideas:analyze', projectId, raw),
+    removeIdea: (id: string): Promise<void> => ipcRenderer.invoke('ideas:remove', id),
+    ideaToCard: (id: string): Promise<void> => ipcRenderer.invoke('ideas:toCard', id),
+    saveTrigger: (t: Trigger): Promise<void> => ipcRenderer.invoke('triggers:save', t),
+    removeTrigger: (id: string): Promise<void> => ipcRenderer.invoke('triggers:remove', id),
+    triggerPort: (): Promise<number> => ipcRenderer.invoke('triggers:port'),
+    commitHistory: (agentId: string): Promise<{ hash: string; subject: string; when: string; note?: string }[]> => ipcRenderer.invoke('git:commitNote', agentId)
   },
   onAwake: (cb: (on: boolean) => void) => on('power:awake', cb),
   onProjectPaused: (cb: (projectId: string) => void) => on('project:paused', cb),

@@ -69,7 +69,7 @@ The terminal module (`node-pty`) is compiled for Electron, so you also need a C+
 - **Windows:** Visual Studio Build Tools with *Desktop development with C++*
 
 ```bash
-git clone https://github.com/<you>/hive.git
+git clone https://github.com/burakilk/hive.git
 cd hive
 npm install          # also compiles node-pty for Electron
 
@@ -107,7 +107,8 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Prompt & role library** with placeholders (`{{agent}}`, `{{branch}}`…); roles become Claude's appended system prompt.
 
 ### Working with agents
-- **Message box** with prompt library, screenshots (**⌘⇧2**, paste or drop images), voice dictation 🎤 and a ✨ prompt enhancer.
+- **Message box** with prompt library, screenshots (**⌘⇧2**, paste or drop images) you can **draw on** (circle, arrow, box, pen), voice dictation 🎤 and a ✨ prompt enhancer.
+- **Pick an element** in the dev-server preview and send its selector, text, styles and HTML to an agent with your note.
 - **Message queue:** while an agent works, Enter queues messages (reorder, send now, remove); ⌘Enter sends immediately.
 - **Conversation view** and a **context meter** (`ctx 62% · 124k/200k`) for Claude Code sessions.
 - **⌘K command palette:** agents, files, prompts, skills, cards, dev servers, views and actions.
@@ -119,9 +120,12 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **AI commit messages** from the real diff (Conventional Commits, your own rules) using your Claude Code.
 - **Plan review:** start an agent in plan mode, then comment / edit / remove plan steps and approve or send back.
 - **Overlap warnings** when two agents change the same file on their branches.
+- **Commit context:** commits made in Hive carry the agent's conversation as a git note (`git log --notes=hive`, or the 🕘 history in the Changes panel).
 
 ### Automation
 - **Backlog board** (Todo / In progress / Done) with per-column prompts and read-only **GitHub Issues import** (`gh` or public API).
+- **Idea radar:** paste raw feedback (reviews, support mails, Slack) – it's grouped into themes with counts and quotes; one click turns a theme into a card.
+- **Webhooks:** a local URL per trigger (`POST /trigger/<id>?token=…`) that starts or messages an agent – for CI, scripts or GitHub / Slack via a tunnel.
 - **Schedules:** once, hourly, daily, weekdays, weekly – typed into the running session or a fresh one.
 - **Workflows:** chain agents step by step; each step gets the previous agent's reply as `{{previous}}`. Templates included.
 - **Test guard:** after a turn that changed files, run the tests; failures go back to the agent (with a retry limit).
@@ -192,7 +196,7 @@ src/
 
 ## Roadmap
 
-- [ ] Sketch on screenshots · pick elements in the preview · idea radar · webhook triggers
+- [x] Sketch on screenshots · pick elements in the preview · idea radar · webhook triggers · commit context
 - [ ] Weekly report · session replay · secrets manager
 - [ ] Database connections · SSH agents · localhost tunnel
 - [ ] Turkish UI · richer Codex / Gemini integration (usage, conversation view)

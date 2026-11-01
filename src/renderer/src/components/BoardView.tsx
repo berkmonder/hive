@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Agent, Schedule, Task, TaskStatus, Workflow } from '@shared/types'
+import type { Agent, Schedule, Task, TaskStatus, Trigger, Workflow } from '@shared/types'
 import { describeSchedule, nextRun } from '@shared/schedule'
 import { useStore } from '../store'
 import { Icon, cleanError, timeAgo } from './common'
@@ -15,7 +15,7 @@ const newId = (): string => Math.random().toString(36).slice(2, 10)
 
 export function BoardView() {
   const scheduleFor = useStore((s) => s.scheduleFor)
-  const [tab, setTab] = useState<'backlog' | 'schedules' | 'workflows'>(scheduleFor ? 'schedules' : 'backlog')
+  const [tab, setTab] = useState<'backlog' | 'schedules' | 'workflows' | 'ideas' | 'triggers'>(scheduleFor ? 'schedules' : 'backlog')
   useEffect(() => {
     if (scheduleFor) setTab('schedules')
   }, [scheduleFor])
@@ -26,10 +26,12 @@ export function BoardView() {
           <button className={tab === 'backlog' ? 'on' : ''} onClick={() => setTab('backlog')}><Icon name="kanban" size={13} /> Backlog</button>
           <button className={tab === 'schedules' ? 'on' : ''} onClick={() => setTab('schedules')}><Icon name="clock" size={13} /> Schedules</button>
           <button className={tab === 'workflows' ? 'on' : ''} onClick={() => setTab('workflows')}><Icon name="zap" size={13} /> Workflows</button>
+          <button className={tab === 'ideas' ? 'on' : ''} onClick={() => setTab('ideas')}><Icon name="inbox" size={13} /> Idea radar</button>
+          <button className={tab === 'triggers' ? 'on' : ''} onClick={() => setTab('triggers')}><Icon name="webhook" size={13} /> Webhooks</button>
         </div>
         <div id="bv-tools" className="bv-tools" />
       </header>
-      {tab === 'backlog' ? <Backlog /> : tab === 'schedules' ? <Schedules /> : <Workflows />}
+      {tab === 'backlog' ? <Backlog /> : tab === 'schedules' ? <Schedules /> : tab === 'workflows' ? <Workflows /> : tab === 'ideas' ? <Ideas /> : <Triggers />}
     </div>
   )
 }
@@ -466,6 +468,126 @@ function WorkflowEditor({ w: init, agents, onClose }: { w: Workflow; agents: Age
           <button className="btn" disabled={!w.name.trim() || w.steps.some((s) => !s.agentId || !s.prompt.trim())} onClick={() => (window.api.workflows.save(w), onClose())}>Save</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+/* ---------------- idea radar ---------------- */
+
+const KIND_COLOR: Record<string, string> = { bug: 'var(--waiting)', feature: 'var(--accent)', improvement: 'var(--done)', question: 'var(--working)' }
+
+function Ideas() {
+  const { app, selectedProjectId, toast } = useStore()
+  const ideas = app.ideas.filter((i) => i.projectId === selectedProjectId).sort((a, b) => b.count - a.count)
+  const [raw, setRaw] = useState('')
+  const [busy, setBusy] = useState(false)
+  const analyze = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      const n = await window.api.extras.analyzeIdeas(selectedProjectId!, raw)
+      toast(`${n} theme${n === 1 ? '' : 's'} found`, 'success')
+      setRaw('')
+    } catch (e) {
+      toast(cleanError(e), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="sched ideas">
+      <div className="ideas-in">
+        <textarea rows={6} value={raw} onChange={(e) => setRaw(e.target.value)}
+          placeholder={'Paste raw feedback – app reviews, support mails, Slack messages, survey answers…\n\n“Dark mode please!!”\n“The login keeps sending me back to the start page”\n“would love a dark theme”'} />
+        <div className="row">
+          <span className="muted small">Grouped into themes by your Claude Code (Haiku). Duplicates are merged and counted.</span>
+          <div className="spacer" />
+          <button className="btn sm" disabled={!raw.trim() || busy} onClick={analyze}><Icon name={busy ? 'refresh' : 'sparkle'} size={13} /> {busy ? 'Grouping…' : 'Find themes'}</button>
+        </div>
+      </div>
+      <div className="idea-list">
+        {ideas.map((i) => (
+          <div key={i.id} className="idea" style={{ ['--k' as string]: KIND_COLOR[i.kind] ?? 'var(--muted)' }}>
+            <div className="idea-count"><b>{i.count}</b><span>×</span></div>
+            <div className="idea-main">
+              <div className="idea-title"><span className="idea-kind">{i.kind}</span> <b>{i.title}</b></div>
+              <p>{i.summary}</p>
+              {i.quotes.map((q, k) => <q key={k}>{q}</q>)}
+            </div>
+            <div className="idea-actions">
+              <button className="btn sm" onClick={() => window.api.extras.ideaToCard(i.id).then(() => toast('Added to Todo', 'success'))}><Icon name="plus" size={12} /> Card</button>
+              <button className="icon-btn" title="Dismiss" onClick={() => window.api.extras.removeIdea(i.id)}><Icon name="x" size={13} /></button>
+            </div>
+          </div>
+        ))}
+        {!ideas.length && <div className="sched-empty"><Icon name="inbox" size={28} /><p>No themes yet. Paste some feedback above.</p></div>}
+      </div>
+    </div>
+  )
+}
+
+/* ---------------- webhooks ---------------- */
+
+function Triggers() {
+  const { app, selectedProjectId, toast } = useStore()
+  const agents = app.agents.filter((a) => a.projectId === selectedProjectId)
+  const list = app.triggers.filter((t) => agents.some((a) => a.id === t.agentId))
+  const [port, setPort] = useState(4317)
+  const [edit, setEdit] = useState<Trigger | null>(null)
+  useEffect(() => {
+    window.api.extras.triggerPort().then(setPort)
+  }, [app.triggers.length])
+  const url = (t: Trigger): string => `http://127.0.0.1:${port}/trigger/${t.id}?token=${t.token}`
+  const copy = (s: string): void => {
+    window.api.copyText(s).then(() => toast('Copied', 'success'))
+  }
+  return (
+    <div className="sched">
+      <div className="bv-bar">
+        <p className="muted small">A URL that starts or messages an agent when something POSTs to it – CI, a script, a cron job, or GitHub / Slack through a tunnel (ngrok, cloudflared).</p>
+        <div className="spacer" />
+        <button className="btn sm" disabled={!agents.length} onClick={() => setEdit({ id: newId(), name: 'CI failed', agentId: agents[0]?.id ?? '', prompt: 'The CI build failed. Find out why and fix it.\n\nPayload:\n{{payload}}', token: '', enabled: true })}>
+          <Icon name="plus" size={13} /> New webhook
+        </button>
+      </div>
+      <div className="sched-list">
+        {list.map((t) => {
+          const a = agents.find((x) => x.id === t.agentId)
+          return (
+            <div key={t.id} className={`sched-row trig ${t.enabled ? '' : 'off'}`}>
+              <button role="switch" aria-checked={t.enabled} className={`switch ${t.enabled ? 'on' : ''}`} onClick={() => window.api.extras.saveTrigger({ ...t, enabled: !t.enabled })}><i /></button>
+              <div className="sr-main" onClick={() => setEdit(t)}>
+                <b>{t.name}</b>
+                <span>→ {a?.name ?? '?'}{t.fired ? ` · fired ${t.fired}× · last ${timeAgo(t.lastFired)}` : ' · never fired'}</span>
+                <code className="trig-url">{url(t)}</code>
+              </div>
+              <button className="btn ghost sm" onClick={() => copy(url(t))}><Icon name="copy" size={12} /> URL</button>
+              <button className="btn ghost sm" title="Copy a curl command to test it" onClick={() => copy(`curl -X POST -H 'Content-Type: application/json' -d '{"test": true}' '${url(t)}'`)}>curl</button>
+              <button className="icon-btn danger" title="Delete" onClick={() => confirm(`Delete ${t.name}?`) && window.api.extras.removeTrigger(t.id)}><Icon name="trash" size={13} /></button>
+            </div>
+          )
+        })}
+        {!list.length && <div className="sched-empty"><Icon name="webhook" size={28} /><p>e.g. “when CI fails, the DevOps agent investigates”, or “a new Sentry error goes to the backend agent”.</p></div>}
+      </div>
+      {edit && (
+        <div className="backdrop" onMouseDown={() => setEdit(null)}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h2><Icon name="webhook" size={15} /> Webhook</h2>
+            <label>Name<input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></label>
+            <label>Agent
+              <select value={edit.agentId} onChange={(e) => setEdit({ ...edit, agentId: e.target.value })}>
+                {agents.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.role}</option>)}
+              </select>
+            </label>
+            <label>Prompt (<code>{'{{payload}}'}</code> = request body, <code>{'{{event}}'}</code> = event header)
+              <textarea rows={5} value={edit.prompt} onChange={(e) => setEdit({ ...edit, prompt: e.target.value })} />
+            </label>
+            <div className="modal-foot">
+              <button className="btn ghost" onClick={() => setEdit(null)}>Cancel</button>
+              <button className="btn" disabled={!edit.name.trim() || !edit.agentId || !edit.prompt.trim()} onClick={() => (window.api.extras.saveTrigger(edit), setEdit(null))}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

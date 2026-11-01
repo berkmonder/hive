@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { DevServer } from '@shared/types'
+import type { DevServer, PickedElement } from '@shared/types'
 import { useStore } from '../store'
 import { clamp, useLayout } from '../layout'
 import { Terminal } from './Terminal'
@@ -194,6 +194,23 @@ function Preview({ url, running, projectPath }: { url?: string; running: boolean
     setNonce((n) => n + 1)
   }
   const width = DEVICES[device].w
+  const [picking, setPicking] = useState(false)
+  const [picked, setPicked] = useState<PickedElement | null>(null)
+  const pick = async (): Promise<void> => {
+    if (picking) {
+      window.api.extras.cancelPick(src)
+      return
+    }
+    setPicking(true)
+    try {
+      const el = await window.api.extras.pick(src)
+      if (el) setPicked(el)
+    } catch (e) {
+      useStore.getState().toast(cleanError(e), 'error')
+    } finally {
+      setPicking(false)
+    }
+  }
   return (
     <div className="preview">
       <div className="pv-bar">
@@ -210,9 +227,13 @@ function Preview({ url, running, projectPath }: { url?: string; running: boolean
         <label className="pv-auto" title="Reload the preview when project files change">
           <input type="checkbox" checked={L.previewAutoReload} onChange={(e) => L.set({ previewAutoReload: e.target.checked })} /> Auto-reload
         </label>
+        <button className={`btn ${picking ? '' : 'ghost'} sm`} disabled={!src} title="Click an element in the preview to send it to an agent (Esc cancels)" onClick={pick}>
+          <Icon name="target" size={13} /> {picking ? 'Click an element… (Esc)' : 'Pick element'}
+        </button>
         <button className="icon-btn" title="Open in browser" disabled={!src} onClick={() => window.api.openLink(src)}><Icon name="external" size={14} /></button>
       </div>
-      <div className={`pv-stage ${width ? 'framed' : ''}`}>
+      {picked && <PickDialog el={picked} onClose={() => setPicked(null)} />}
+      <div className={`pv-stage ${width ? 'framed' : ''} ${picking ? 'picking' : ''}`}>
         {src ? (
           <iframe
             key={`${src}#${nonce}`}
@@ -268,6 +289,49 @@ function ServerDialog({ server, isNew, onClose, onSaved }: { server: DevServer; 
           {isNew ? <button className="btn" disabled={!valid}>Add &amp; start</button> : <button type="button" className="btn" disabled={!valid} onClick={() => save(false)}>Save</button>}
         </div>
       </form>
+    </div>
+  )
+}
+
+function PickDialog({ el, onClose }: { el: PickedElement; onClose: () => void }) {
+  const { app, selectedProjectId, focusedAgentId, toast } = useStore()
+  const agents = app.agents.filter((a) => a.projectId === selectedProjectId)
+  const [agentId, setAgentId] = useState(focusedAgentId && agents.some((a) => a.id === focusedAgentId) ? focusedAgentId : agents[0]?.id ?? '')
+  const [note, setNote] = useState('')
+  const send = (): void => {
+    const text = [
+      note.trim() || 'Look at this element:',
+      '',
+      `Element in the running app (${el.url}):`,
+      `- selector: \`${el.selector}\``,
+      `- <${el.tag}> ${el.size}${el.text ? ` · text: "${el.text}"` : ''}`,
+      `- ${el.style}`,
+      '```html',
+      el.html,
+      '```'
+    ].join('\n')
+    window.api.queue.add(agentId, text).then(() => (toast('Sent to agent', 'success'), onClose())).catch((e) => toast(cleanError(e), 'error'))
+  }
+  return (
+    <div className="backdrop" onMouseDown={onClose}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+        <h2><Icon name="target" size={15} /> Send element to an agent</h2>
+        <div className="picked">
+          <code>{el.selector}</code>
+          <span className="muted small">&lt;{el.tag}&gt; · {el.size}{el.text ? ` · “${el.text.slice(0, 60)}”` : ''}</span>
+        </div>
+        <label>What should change?<textarea autoFocus rows={3} value={note} placeholder="e.g. Make this button full width on mobile and use the accent colour" onChange={(e) => setNote(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.metaKey || e.ctrlKey) && send()} /></label>
+        <label>Agent
+          <select value={agentId} onChange={(e) => setAgentId(e.target.value)}>
+            {agents.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.role}</option>)}
+          </select>
+        </label>
+        <div className="modal-foot">
+          <button className="btn ghost" onClick={onClose}>Cancel</button>
+          <button className="btn" disabled={!agentId} onClick={send}><Icon name="send" size={13} /> Send</button>
+        </div>
+      </div>
     </div>
   )
 }

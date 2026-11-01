@@ -7,7 +7,7 @@ import { DEFAULT_PROMPTS, DEFAULT_ROLES } from '@shared/library'
 
 const file = () => join(app.getPath('userData'), 'state.json')
 
-let state: AppState = { projects: [], agents: [], providers: DEFAULT_PROVIDERS, prompts: DEFAULT_PROMPTS, roles: DEFAULT_ROLES, servers: [], settings: DEFAULT_SETTINGS, tasks: [], schedules: [], skills: DEFAULT_SKILLS, mcpServers: [], boardPrompts: DEFAULT_BOARD_PROMPTS, memory: {}, projectSettings: {}, workflows: [], workflowRuns: [] }
+let state: AppState = { projects: [], agents: [], providers: DEFAULT_PROVIDERS, prompts: DEFAULT_PROMPTS, roles: DEFAULT_ROLES, servers: [], settings: DEFAULT_SETTINGS, tasks: [], schedules: [], skills: DEFAULT_SKILLS, mcpServers: [], boardPrompts: DEFAULT_BOARD_PROMPTS, memory: {}, projectSettings: {}, workflows: [], workflowRuns: [], ideas: [], triggers: [] }
 
 export function loadState(): AppState {
   try {
@@ -31,7 +31,9 @@ export function loadState(): AppState {
         memory: raw.memory ?? {},
         projectSettings: raw.projectSettings ?? {},
         workflows: raw.workflows ?? [],
-        workflowRuns: raw.workflowRuns ?? []
+        workflowRuns: raw.workflowRuns ?? [],
+        ideas: raw.ideas ?? [],
+        triggers: raw.triggers ?? []
       }
     }
   } catch (err) {

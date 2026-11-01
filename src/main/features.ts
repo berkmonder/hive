@@ -300,6 +300,11 @@ export function registerFeatures(ctx: FeatureCtx): { dispose: () => void; onPaus
     w?.focus()
     return shot
   })
+  ipcMain.handle('media:readImage', async (_e, path: string) => {
+    const { nativeImage, app } = await import('electron')
+    if (!path.startsWith(join(app.getPath('userData'), 'attachments'))) throw new Error('Not an attachment')
+    return nativeImage.createFromPath(path).toDataURL()
+  })
   ipcMain.handle('media:saveImage', (_e, data: Uint8Array, ext: string) => saveImage(data, ext))
   ipcMain.handle('media:micAccess', async () => {
     if (process.platform !== 'darwin') return true

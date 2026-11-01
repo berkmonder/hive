@@ -3,6 +3,7 @@ import { PromptPicker, promptFor, sendPrompt } from './Library'
 import { useStore } from '../store'
 import { Recorder } from '../dictation'
 import { Icon, cleanError } from './common'
+import { SketchEditor } from './Sketch'
 
 type Shot = { path: string; dataUrl: string }
 
@@ -15,6 +16,7 @@ export function Composer({ agentId, compact }: { agentId: string; compact?: bool
   const [level, setLevel] = useState(0)
   const [enhancing, setEnhancing] = useState(false)
   const [undo, setUndo] = useState<string | null>(null)
+  const [sketch, setSketch] = useState<{ i: number; src: string } | null>(null)
   const recorder = useRef<Recorder | null>(null)
   const ta = useRef<HTMLTextAreaElement>(null)
   const agent = useStore((s) => s.app.agents.find((a) => a.id === agentId))
@@ -148,11 +150,18 @@ export function Composer({ agentId, compact }: { agentId: string; compact?: bool
           ))}
         </div>
       )}
+      {sketch && (
+        <SketchEditor src={sketch.src} onClose={() => setSketch(null)} onSave={async (png) => {
+          const a = await window.api.media.saveImage(png, 'png')
+          setShots((x) => x.map((s, j) => (j === sketch.i ? a : s)))
+          setSketch(null)
+        }} />
+      )}
       {shots.length > 0 && (
         <div className="shots">
           {shots.map((s, i) => (
-            <div key={s.path} className="shot" title={s.path}>
-              <img src={s.dataUrl} alt="" />
+            <div key={s.path} className="shot" title="Click to draw on it">
+              <img src={s.dataUrl} alt="" onClick={async () => setSketch({ i, src: await window.api.media.readImage(s.path) })} />
               <button onClick={() => setShots(shots.filter((_, j) => j !== i))}><Icon name="x" size={11} /></button>
             </div>
           ))}

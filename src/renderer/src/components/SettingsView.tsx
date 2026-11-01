@@ -298,6 +298,14 @@ function AgentSettings() {
           <Choice value={s.memoryMode} options={[['readwrite', 'Read & write'], ['read', 'Read only'], ['off', 'Off']]} onChange={(v) => save({ memoryMode: v })} />
         </Row>
       </Group>
+      <Group title="Commits & webhooks">
+        <Row label="Attach the conversation to commits" hint="Commits made in Hive get the agent's recent conversation as a git note (git log --notes=hive).">
+          <Toggle on={s.commitContext} onChange={(v) => save({ commitContext: v })} />
+        </Row>
+        <Row label="Webhook port" hint="Local port for Backlog → Webhooks (127.0.0.1 only).">
+          <input type="number" style={{ width: 110 }} defaultValue={s.triggerPort} onBlur={(e) => Number(e.target.value) !== s.triggerPort && save({ triggerPort: Number(e.target.value) || 4317 })} />
+        </Row>
+      </Group>
       <Group title="AI commit messages" hint="✨ in the Changes panel writes the message from the real diff with your Claude Code (Haiku).">
         <textarea rows={3} defaultValue={s.commitRules} onBlur={(e) => e.target.value !== s.commitRules && save({ commitRules: e.target.value })} />
       </Group>

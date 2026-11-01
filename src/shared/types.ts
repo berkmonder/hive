@@ -162,6 +162,33 @@ export interface AppState {
   projectSettings: Record<string, ProjectSettings>
   workflows: Workflow[]
   workflowRuns: WorkflowRun[]
+  ideas: Idea[]
+  triggers: Trigger[]
+}
+
+/** A theme found by the idea radar in raw user feedback */
+export interface Idea {
+  id: string
+  projectId: string
+  title: string
+  kind: 'bug' | 'feature' | 'improvement' | 'question' | string
+  summary: string
+  count: number
+  quotes: string[]
+  at: number
+}
+
+/** POST http://127.0.0.1:<port>/trigger/<id>?token=… starts / messages an agent */
+export interface Trigger {
+  id: string
+  name: string
+  agentId: string
+  /** {{payload}} = request body, {{event}} = X-GitHub-Event / X-Event header */
+  prompt: string
+  token: string
+  enabled: boolean
+  lastFired?: number
+  fired?: number
 }
 
 export interface ProjectSettings {
@@ -244,6 +271,10 @@ export interface AppSettings {
   whisperCmd: string
   /** let the message box queue messages while the agent is busy */
   queueWhenBusy: boolean
+  /** local port for webhook triggers */
+  triggerPort: number
+  /** attach the agent's conversation to commits made in Hive (git notes, ref "hive") */
+  commitContext: boolean
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -258,7 +289,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   openaiKey: '',
   dictationLang: '',
   whisperCmd: '',
-  queueWhenBusy: true
+  queueWhenBusy: true,
+  triggerPort: 4317,
+  commitContext: true
 }
 
 export const DEFAULT_BOARD_PROMPTS: Record<TaskStatus, string> = {
@@ -326,4 +359,15 @@ export interface GitSummary {
   branch?: string
   files: { path: string; status: string; added?: number; removed?: number }[]
   diff: string
+}
+
+/** Element clicked in the dev-server preview */
+export interface PickedElement {
+  selector: string
+  tag: string
+  text: string
+  html: string
+  url: string
+  size: string
+  style: string
 }

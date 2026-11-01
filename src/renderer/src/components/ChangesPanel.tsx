@@ -28,6 +28,7 @@ export function ChangesPanel({ agent, onClose, mode = 'side', onMode }: {
   const [scope, setScope] = useState<'work' | 'branch'>('work')
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [general, setGeneral] = useState('')
+  const [history, setHistory] = useState<{ hash: string; subject: string; when: string; note?: string }[] | null>(null)
 
   const refresh = useCallback(() => {
     const p = scope === 'branch' ? window.api.review.summary(agent.id) : window.api.gitSummary(agent.id)
@@ -166,6 +167,7 @@ export function ChangesPanel({ agent, onClose, mode = 'side', onMode }: {
         <button className="icon-btn" title="Smaller text" onClick={() => L.set({ diffFont: clamp(L.diffFont - 1, 9, 20) })}><span className="kbd">A−</span></button>
         <button className="icon-btn" title="Larger text" onClick={() => L.set({ diffFont: clamp(L.diffFont + 1, 9, 20) })}><span className="kbd">A+</span></button>
         <button className="icon-btn" title="Refresh" onClick={refresh}><Icon name="refresh" size={14} /></button>
+        <button className="icon-btn" title="Commit history with the conversations behind them" onClick={() => window.api.extras.commitHistory(agent.id).then(setHistory).catch((e) => toast(cleanError(e), 'error'))}><Icon name="clock" size={14} /></button>
         {onMode && (
           <button className="icon-btn" title={mode === 'full' ? 'Back to side panel' : 'Full-screen review'} onClick={() => onMode(mode === 'full' ? 'side' : 'full')}>
             <Icon name={mode === 'full' ? 'collapse' : 'expand'} size={14} />
@@ -308,6 +310,23 @@ export function ChangesPanel({ agent, onClose, mode = 'side', onMode }: {
             </div>
           )}
         </>
+      )}
+      {history && (
+        <div className="backdrop" onMouseDown={() => setHistory(null)}>
+          <div className="modal history" onMouseDown={(e) => e.stopPropagation()}>
+            <h2><Icon name="clock" size={15} /> Commits</h2>
+            <p className="muted small">Commits made in Hive carry the conversation that produced them (<code>git log --notes=hive</code>).</p>
+            <div className="hist-list">
+              {history.map((c) => (
+                <details key={c.hash} className="hist">
+                  <summary><code>{c.hash.slice(0, 7)}</code> <b>{c.subject}</b> <span className="muted small">{c.when}</span>{c.note && <span className="chip">💬 context</span>}</summary>
+                  {c.note ? <pre>{c.note}</pre> : <p className="muted small">No conversation attached.</p>}
+                </details>
+              ))}
+            </div>
+            <div className="modal-foot"><button className="btn ghost" onClick={() => setHistory(null)}>Close</button></div>
+          </div>
+        </div>
       )}
     </aside>
   )
