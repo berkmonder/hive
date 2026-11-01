@@ -260,6 +260,27 @@ src/
 - [ ] Saved SSH servers, SSH tunnels, AWS SSM, Cloud SQL
 - [ ] CLI doctor
 
+**Usage & accounts**
+- [ ] Usage alerts when a Claude / Codex quota window passes a threshold
+- [ ] Send the message queue when the usage window resets
+- [ ] Alternate new agents between Claude Code and Codex by quota
+- [ ] Multiple accounts for Grok and Cursor
+- [ ] Reasoning effort per project and per card
+
+**Review & insight**
+- [ ] Per-task diff (filter changes by card, commit separately)
+- [ ] Reorder plan steps by drag & drop
+- [ ] Project statistics: time, prompts, daily activity charts
+- [ ] Unread indicators per project and agent
+- [ ] Commit context as a private gist (besides the git note)
+
+**Tools**
+- [ ] Write shared MCP servers to every CLI's config (Codex, Gemini), not just Claude
+- [ ] Saved per-project commands (run with one click or remotely)
+- [ ] Figma capture via a Chrome extension
+- [ ] Read aloud with AI summaries · review dictated text before sending
+- [ ] Personal assistant reachable from phone / voice assistants (needs a server)
+
 **Needs testing on a real machine**
 - [ ] Codex `notify` hook (turn end) and Codex / Gemini session discovery
 - [ ] Quota switch: limit detection, next account, hand-over to another CLI
