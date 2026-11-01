@@ -1194,3 +1194,60 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .share-url { cursor: pointer; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--done); border-color: color-mix(in srgb, var(--done) 40%, transparent); background: none; }
 .db-console { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
 .db-console pre { margin: 0; max-height: 320px; overflow: auto; font-size: 11.5px; background: var(--panel-2); padding: 10px; border-radius: 8px; white-space: pre-wrap; }
+
+/* ---------- workspace: pane headers + databases ---------- */
+.ws-intro h2 svg { width: 30px; height: 30px; padding: 7px; border-radius: 9px; color: var(--accent-2); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.ws-intro h2 { font-size: 16px; gap: 10px; }
+.ws-intro p { margin-left: 40px; line-height: 1.55; }
+.pane-hero { display: flex; align-items: flex-start; gap: 16px; padding: 20px 22px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent) 12%, var(--panel)) 0%, var(--panel) 55%); }
+.ph-icon { width: 48px; height: 48px; flex: none; border-radius: 14px; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent)); box-shadow: 0 8px 22px -8px var(--accent); }
+.ph-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ph-text h2 { font-size: 18px; }
+.ph-text p { margin: 0; color: var(--muted); font-size: 13px; }
+.ph-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.ph-badges span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 11.5px; color: var(--text-2);
+  background: color-mix(in srgb, var(--panel-3) 70%, transparent); border: 1px solid var(--border); }
+.ph-badges svg { color: var(--accent-2); }
+.db-logo { display: grid; place-items: center; flex: none; border-radius: 28%; font-weight: 800; letter-spacing: -.02em; color: #fff;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--c) 80%, #fff), var(--c)); box-shadow: 0 6px 16px -8px var(--c); }
+.db-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 34px 20px 30px; border: 1px dashed var(--border-2); border-radius: var(--radius); background: var(--panel); }
+.db-empty-art { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; color: var(--accent-2); background: color-mix(in srgb, var(--accent) 12%, transparent); margin-bottom: 4px; }
+.db-empty h3 { margin: 0; font-size: 16px; }
+.db-empty p { margin: 0 0 10px; font-size: 13px; }
+.db-types { display: grid; grid-template-columns: repeat(3, 168px); gap: 12px; }
+.db-type { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--panel-2); transition: transform .12s, border-color .12s; }
+.db-type:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+.db-type b { font-size: 13.5px; }
+.db-type span { display: inline-flex; align-items: center; gap: 2px; }
+.db-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.db-card { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--panel); text-align: left; }
+.db-card:hover { border-color: var(--border-2); }
+.db-card-head { display: flex; align-items: center; gap: 12px; }
+.db-card-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.db-card-title b { font-size: 14px; }
+.db-card-title span { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.db-card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--muted); background: var(--panel-2); border: 1px solid var(--border); }
+.tag.ok { color: var(--done); border-color: color-mix(in srgb, var(--done) 35%, transparent); background: color-mix(in srgb, var(--done) 8%, transparent); }
+.tag.warn { color: var(--working); border-color: color-mix(in srgb, var(--working) 40%, transparent); background: color-mix(in srgb, var(--working) 8%, transparent); }
+.db-try { align-self: flex-start; }
+.db-add { align-items: center; justify-content: center; gap: 8px; color: var(--muted); border-style: dashed; min-height: 128px; cursor: pointer; }
+.db-add:hover { color: var(--accent-2); border-color: var(--accent); }
+.db-console { gap: 10px; }
+.db-console header { display: flex; align-items: center; gap: 8px; }
+.db-console textarea { font-size: 12.5px; background: var(--bg-2); }
+.db-console pre.err { color: var(--red-text); }
+.modal.db-modal { width: 560px; }
+.db-type-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.db-type-pick button { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 11px; border: 1px solid var(--border); background: var(--panel-2); font-weight: 600; font-size: 12.5px; }
+.db-type-pick button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel-2)); }
+.db-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.db-opt { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; row-gap: 2px; align-items: center; text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--panel-2); }
+.db-opt svg { grid-row: span 2; color: var(--muted); }
+.db-opt b { font-size: 13px; } .db-opt span { font-size: 11.5px; color: var(--muted); }
+.db-opt.on { border-color: var(--done); background: color-mix(in srgb, var(--done) 8%, var(--panel-2)); }
+.db-opt.on svg { color: var(--done); }
+.db-opt.on.warn { border-color: var(--working); background: color-mix(in srgb, var(--working) 8%, var(--panel-2)); }
+.db-opt.on.warn svg { color: var(--working); }

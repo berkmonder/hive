@@ -331,94 +331,155 @@ function Secrets() {
   )
 }
 
-const DB_HINT: Record<DbConnection['type'], string> = {
-  postgres: 'postgres://user:password@host:5432/dbname',
-  mysql: 'mysql://user:password@host:3306/dbname',
-  mongodb: 'mongodb+srv://user:password@cluster.example.net/dbname'
+const DB_TYPES: { id: DbConnection['type']; name: string; short: string; color: string; hint: string; example: string }[] = [
+  { id: 'postgres', name: 'PostgreSQL', short: 'PG', color: '#336791', hint: 'postgres://user:password@host:5432/dbname', example: "select * from users order by created_at desc limit 10" },
+  { id: 'mysql', name: 'MySQL', short: 'My', color: '#e48e00', hint: 'mysql://user:password@host:3306/dbname', example: 'select * from orders limit 10' },
+  { id: 'mongodb', name: 'MongoDB', short: 'Mo', color: '#47a248', hint: 'mongodb+srv://user:password@cluster.example.net/dbname', example: '{"collection":"users","find":{},"limit":10}' }
+]
+const dbType = (t: DbConnection['type']) => DB_TYPES.find((x) => x.id === t)!
+
+function DbLogo({ type, size = 38 }: { type: DbConnection['type']; size?: number }) {
+  const d = dbType(type)
+  return <span className="db-logo" style={{ ['--c' as string]: d.color, width: size, height: size, fontSize: size * 0.36 }}>{d.short}</span>
 }
 
 function Databases() {
   const { app, selectedProjectId, toast } = useStore()
   const [list, setList] = useState<DbConnection[]>([])
   const [edit, setEdit] = useState<(DbConnection & { url: string }) | null>(null)
-  const [q, setQ] = useState<{ id: string; text: string; out?: string; busy?: boolean } | null>(null)
+  const [q, setQ] = useState<{ id: string; text: string; out?: string; ok?: boolean; busy?: boolean } | null>(null)
   const load = (): void => {
     window.api.db.list().then(setList)
   }
   useEffect(load, [])
+  const visible = list.filter((d) => !d.projectId || d.projectId === selectedProjectId)
+  const others = list.length - visible.length
+  const startNew = (type: DbConnection['type'] = 'postgres'): void =>
+    setEdit({ id: newId(), name: type === 'mongodb' ? 'app-mongo' : 'app-db', type, readOnly: true, projectId: selectedProjectId ?? undefined, url: '' })
   const run = async (): Promise<void> => {
     if (!q) return
     setQ({ ...q, busy: true, out: undefined })
     try {
-      setQ({ ...q, busy: false, out: await window.api.db.query(q.id, q.text) })
+      setQ({ ...q, busy: false, ok: true, out: await window.api.db.query(q.id, q.text) })
     } catch (e) {
-      setQ({ ...q, busy: false, out: `Error: ${cleanError(e)}` })
+      setQ({ ...q, busy: false, ok: false, out: cleanError(e) })
     }
   }
+  const qDb = list.find((d) => d.id === q?.id)
   return (
     <div className="ws-pane">
-      <div className="ws-intro">
-        <h2><Icon name="database" size={16} /> Databases</h2>
-        <p className="muted small">PostgreSQL, MySQL and MongoDB. Claude agents query them with <code>db_list</code> / <code>db_query</code> – one statement per call, read-only by default
-          (enforced with read-only transactions), and the connection string (with its password) is stored encrypted and never shown to the agent.</p>
-      </div>
-      <div className="secret-list">
-        {list.map((d) => (
-          <div key={d.id} className="secret-row">
-            <Icon name="database" size={14} />
-            <b>{d.name}</b>
-            <span className="chip">{d.type}</span>
-            <span className="mono muted small">{d.host}</span>
-            <span className={`chip ${d.readOnly ? '' : 'warn-text'}`}>{d.readOnly ? 'read-only' : 'read-write'}</span>
-            <span className="chip">{d.projectId ? app.projects.find((p) => p.id === d.projectId)?.name : 'All projects'}</span>
-            <div className="spacer" />
-            <button className="btn ghost sm" onClick={() => setQ({ id: d.id, text: d.type === 'mongodb' ? '{"collections": true}' : d.type === 'postgres' ? "select table_name from information_schema.tables where table_schema = 'public'" : 'show tables' })}>Query</button>
-            <button className="icon-btn" title="Edit" onClick={() => setEdit({ ...d, url: '' })}><Icon name="edit" size={13} /></button>
-            <button className="icon-btn danger" title="Delete" onClick={() => confirm(`Remove ${d.name}?`) && window.api.db.remove(d.id).then(load)}><Icon name="trash" size={13} /></button>
+      <header className="pane-hero">
+        <div className="ph-icon"><Icon name="database" size={22} /></div>
+        <div className="ph-text">
+          <h2>Databases</h2>
+          <p>Let agents look at real data – safely. Claude agents use <code>db_list</code> and <code>db_query</code>.</p>
+          <div className="ph-badges">
+            <span><Icon name="lock" size={12} /> Credentials encrypted, never shown to agents</span>
+            <span><Icon name="eye" size={12} /> Read-only by default</span>
+            <span><Icon name="terminal" size={12} /> One statement per call</span>
           </div>
-        ))}
-        {!list.length && <p className="muted small">No databases yet.</p>}
-      </div>
-      <div className="row">
-        <button className="btn sm" onClick={() => setEdit({ id: newId(), name: 'app-db', type: 'postgres', readOnly: true, projectId: selectedProjectId ?? undefined, url: '' })}>
-          <Icon name="plus" size={12} /> Add database
-        </button>
-      </div>
-      {q && (
-        <div className="db-console">
-          <textarea className="mono" rows={3} value={q.text} onChange={(e) => setQ({ ...q, text: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && (e.metaKey || e.ctrlKey) && run()} />
-          <div className="row">
-            <span className="muted small">⌘⏎ to run · same rules as for agents</span>
-            <div className="spacer" />
-            <button className="btn ghost sm" onClick={() => setQ(null)}>Close</button>
-            <button className="btn sm" disabled={q.busy} onClick={run}>{q.busy ? 'Running…' : 'Run'}</button>
+        </div>
+        {visible.length > 0 && <button className="btn" onClick={() => startNew()}><Icon name="plus" size={14} /> Add database</button>}
+      </header>
+
+      {visible.length === 0 ? (
+        <div className="db-empty">
+          <div className="db-empty-art"><Icon name="database" size={30} /></div>
+          <h3>No databases connected</h3>
+          <p className="muted">Pick a type to connect. You can keep it read-only and limit it to this project.</p>
+          <div className="db-types">
+            {DB_TYPES.map((d) => (
+              <button key={d.id} className="db-type" onClick={() => startNew(d.id)}>
+                <DbLogo type={d.id} size={44} />
+                <b>{d.name}</b>
+                <span className="muted small">Connect <Icon name="chevronRight" size={11} /></span>
+              </button>
+            ))}
           </div>
-          {q.out && <pre className="mono">{q.out}</pre>}
+        </div>
+      ) : (
+        <div className="db-grid">
+          {visible.map((d) => (
+            <article key={d.id} className="db-card">
+              <div className="db-card-head">
+                <DbLogo type={d.type} />
+                <div className="db-card-title">
+                  <b>{d.name}</b>
+                  <span className="mono">{d.host || dbType(d.type).name}</span>
+                </div>
+                <button className="icon-btn" title="Edit" onClick={() => setEdit({ ...d, url: '' })}><Icon name="edit" size={14} /></button>
+                <button className="icon-btn danger" title="Remove" onClick={() => confirm(`Remove ${d.name}?`) && window.api.db.remove(d.id).then(load)}><Icon name="trash" size={14} /></button>
+              </div>
+              <div className="db-card-tags">
+                <span className={`tag ${d.readOnly ? 'ok' : 'warn'}`}><Icon name={d.readOnly ? 'eye' : 'edit'} size={11} /> {d.readOnly ? 'Read-only' : 'Read & write'}</span>
+                <span className="tag">{dbType(d.type).name}</span>
+                <span className="tag">{d.projectId ? 'This project' : 'All projects'}</span>
+              </div>
+              <button className="btn ghost sm db-try" onClick={() => setQ({ id: d.id, text: dbType(d.type).example })}><Icon name="play" size={12} /> Try a query</button>
+            </article>
+          ))}
+          <button className="db-card db-add" onClick={() => startNew()}>
+            <Icon name="plus" size={20} />
+            <span>Add database</span>
+          </button>
         </div>
       )}
+      {others > 0 && <p className="muted small">{others} more connection{others > 1 ? 's' : ''} in other projects.</p>}
+
+      {q && qDb && (
+        <section className="db-console">
+          <header>
+            <DbLogo type={qDb.type} size={24} />
+            <b>{qDb.name}</b>
+            <span className="muted small">same rules as for agents{qDb.readOnly ? ' · read-only' : ''}</span>
+            <div className="spacer" />
+            <button className="icon-btn" title="Close" onClick={() => setQ(null)}><Icon name="x" size={14} /></button>
+          </header>
+          <textarea className="mono" rows={3} value={q.text} spellCheck={false} onChange={(e) => setQ({ ...q, text: e.target.value })}
+            onKeyDown={(e) => e.key === 'Enter' && (e.metaKey || e.ctrlKey) && run()} />
+          <div className="row">
+            <span className="muted small"><span className="kbd">⌘⏎</span> run</span>
+            <div className="spacer" />
+            <button className="btn sm" disabled={q.busy} onClick={run}><Icon name={q.busy ? 'refresh' : 'play'} size={12} /> {q.busy ? 'Running…' : 'Run'}</button>
+          </div>
+          {q.out && <pre className={`mono ${q.ok ? '' : 'err'}`}>{q.out}</pre>}
+        </section>
+      )}
+
       {edit && (
         <div className="backdrop" onMouseDown={() => setEdit(null)}>
-          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-            <h2><Icon name="database" size={15} /> Database</h2>
-            <div className="row">
-              <label style={{ flex: 1 }}>Name<input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value.replace(/\s+/g, '-') })} /></label>
-              <label>Type
-                <select value={edit.type} onChange={(e) => setEdit({ ...edit, type: e.target.value as DbConnection['type'] })}>
-                  <option value="postgres">PostgreSQL</option><option value="mysql">MySQL</option><option value="mongodb">MongoDB</option>
-                </select>
-              </label>
+          <div className="modal db-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h2>{list.some((d) => d.id === edit.id) ? 'Edit database' : 'Connect a database'}</h2>
+            <div className="db-type-pick">
+              {DB_TYPES.map((d) => (
+                <button key={d.id} type="button" className={edit.type === d.id ? 'on' : ''} onClick={() => setEdit({ ...edit, type: d.id })}>
+                  <DbLogo type={d.id} size={28} /> {d.name}
+                </button>
+              ))}
             </div>
-            <label>Connection string{list.some((d) => d.id === edit.id) && <small className="muted"> – leave empty to keep the saved one</small>}
-              <input type="password" className="mono" value={edit.url} placeholder={DB_HINT[edit.type]} onChange={(e) => setEdit({ ...edit, url: e.target.value })} />
+            <label>Name · how agents refer to it
+              <input className="mono" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value.replace(/\s+/g, '-') })} />
             </label>
-            <label className="check"><input type="checkbox" checked={edit.readOnly} onChange={(e) => setEdit({ ...edit, readOnly: e.target.checked })} /> Read-only (recommended)</label>
-            <label className="check"><input type="checkbox" checked={!edit.projectId} onChange={(e) => setEdit({ ...edit, projectId: e.target.checked ? undefined : selectedProjectId ?? undefined })} /> Available in every project</label>
+            <label>{list.some((d) => d.id === edit.id) ? 'Connection string · leave empty to keep the saved one' : 'Connection string'}
+              <input type="password" className="mono" value={edit.url} placeholder={dbType(edit.type).hint} onChange={(e) => setEdit({ ...edit, url: e.target.value })} />
+            </label>
+            <div className="db-opts">
+              <button type="button" className={`db-opt ${edit.readOnly ? 'on' : ''}`} onClick={() => setEdit({ ...edit, readOnly: true })}>
+                <Icon name="eye" size={16} /><b>Read-only</b><span>Recommended. Writes are rejected.</span>
+              </button>
+              <button type="button" className={`db-opt ${!edit.readOnly ? 'on warn' : ''}`} onClick={() => setEdit({ ...edit, readOnly: false })}>
+                <Icon name="edit" size={16} /><b>Read & write</b><span>Agents can change data.</span>
+              </button>
+            </div>
+            <label className="check"><input type="checkbox" checked={!edit.projectId} onChange={(e) => setEdit({ ...edit, projectId: e.target.checked ? undefined : selectedProjectId ?? undefined })} /> Available in every project
+              {edit.projectId && <small className="muted">&nbsp;(now: {app.projects.find((p) => p.id === edit.projectId)?.name})</small>}
+            </label>
             <div className="modal-foot">
               <button className="btn ghost" onClick={() => setEdit(null)}>Cancel</button>
               <button className="btn" disabled={!edit.name.trim() || (!edit.url && !list.some((d) => d.id === edit.id))} onClick={() => {
                 const { url, ...d } = edit
                 window.api.db.save(d, url || undefined).then(() => (setEdit(null), load(), toast('Database saved – restart Claude agents to give them access', 'success'))).catch((e) => toast(cleanError(e), 'error'))
-              }}>Save</button>
+              }}><Icon name="check" size={14} /> Save</button>
             </div>
           </div>
         </div>
