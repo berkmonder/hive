@@ -10,7 +10,7 @@ and watch them work together in a little office.
 
 macOS · Windows · Linux &nbsp;·&nbsp; Electron + React + TypeScript &nbsp;·&nbsp; MIT
 
-<img src="docs/screenshots/office.png" width="900" alt="Hive – the office view">
+<img src="docs/screenshots/office.png" width="900" alt="Hive – the pixel-art office view">
 
 </div>
 
@@ -38,12 +38,12 @@ extra account: your Claude / OpenAI subscription or API key stays with the CLI.
 
 <table>
 <tr>
-<td><img src="docs/screenshots/chat.png" alt="Conversation view"><br><sub><b>Conversation view</b> – a Claude Code session as a chat, with context meter</sub></td>
+<td><img src="docs/screenshots/chat.png" alt="Conversation view"><br><sub><b>Conversation view</b> – a Claude Code, Codex or Gemini session as a chat, with context meter and read-aloud</sub></td>
 <td><img src="docs/screenshots/review.png" alt="Review"><br><sub><b>Vibe review</b> – notes per file, send back or approve (commit + merge)</sub></td>
 </tr>
 <tr>
-<td><img src="docs/screenshots/board.png" alt="Backlog"><br><sub><b>Backlog</b> – cards hand work to agents as they move</sub></td>
-<td><img src="docs/screenshots/plan.png" alt="Plan review"><br><sub><b>Plan review</b> – comment, edit or remove steps before any code is written</sub></td>
+<td><img src="docs/screenshots/board.png" alt="Backlog"><br><sub><b>Backlog</b> – cards hand work to agents as they move; auto-pick and tracker imports</sub></td>
+<td><img src="docs/screenshots/plan.png" alt="Plan review"><br><sub><b>Plan review</b> – comment, edit, reorder, add or remove steps before any code is written</sub></td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/split.png" alt="Split view"><br><sub><b>Split view</b> – several agents side by side, each with a message queue</sub></td>
