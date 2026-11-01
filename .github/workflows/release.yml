@@ -1,0 +1,47 @@
+name: Release
+
+# Push a tag like v0.1.0 → builds macOS (Apple Silicon + Intel), Windows and Linux
+# and attaches the installers to a GitHub Release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            args: --mac --arm64 --x64
+          - os: windows-latest
+            args: --win --x64
+          - os: ubuntu-22.04
+            args: --linux --x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # node-gyp (node-pty)
+
+      - name: Install
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
+
+      - name: Package & publish
+        run: npx electron-builder ${{ matrix.args }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

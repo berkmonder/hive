@@ -51,7 +51,16 @@ extra account: your Claude / OpenAI subscription or API key stays with the CLI.
 </tr>
 </table>
 
-## Quick start
+## Download
+
+Grab the latest installer from **[Releases](https://github.com/burakilk/hive/releases/latest)** –
+`.dmg` for macOS (Apple Silicon / Intel), `-setup.exe` for Windows, `.AppImage` for Linux.
+
+> **macOS:** Hive isn't notarized yet – after moving it to Applications run `xattr -cr /Applications/Hive.app` once
+> (or right-click → *Open*).
+
+## Build from source
+
 
 **Requirements:** Node 20+, git, and at least one agent CLI on your `PATH` (`claude`, `codex`, `gemini`, `aider`…).
 The terminal module (`node-pty`) is compiled for Electron, so you also need a C++ toolchain:
@@ -60,7 +69,7 @@ The terminal module (`node-pty`) is compiled for Electron, so you also need a C+
 - **Windows:** Visual Studio Build Tools with *Desktop development with C++*
 
 ```bash
-git clone https://github.com/burakilk/hive.git
+git clone https://github.com/<you>/hive.git
 cd hive
 npm install          # also compiles node-pty for Electron
 
