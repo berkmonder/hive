@@ -247,11 +247,12 @@ src/
 
 **Monitoring**
 - [ ] Status island · context canary · adaptive mode
-- [ ] Cache hit rate and unread badges · pause summaries
+- [x] Cache hit rate and unread indicators
+- [ ] Pause summaries
 
 **Review & QA**
 - [ ] Per-agent diff on a shared branch · "Ask Claude" about a diff
-- [ ] Add steps to a plan during review
+- [x] Add and reorder plan steps during review
 - [ ] QA in an embedded browser · Chrome control
 
 **Providers & infrastructure**
@@ -269,9 +270,9 @@ src/
 
 **Review & insight**
 - [ ] Per-task diff (filter changes by card, commit separately)
-- [ ] Reorder plan steps by drag & drop
+- [x] Reorder plan steps
 - [ ] Project statistics: time, prompts, daily activity charts
-- [ ] Unread indicators per project and agent
+- [x] Unread indicators per project and agent
 - [ ] Commit context as a private gist (besides the git note)
 
 **Tools**

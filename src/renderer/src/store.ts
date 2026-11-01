@@ -18,6 +18,8 @@ interface Store {
   init: () => Promise<void>
   selectProject: (id: string | null) => void
   focusAgent: (id: string | null) => void
+  /** agents that finished a turn you have not looked at yet */
+  unread: Record<string, boolean>
   setView: (v: View) => void
   setShowNewAgent: (v: boolean) => void
   menu: { x: number; y: number; agentId: string } | null
@@ -190,7 +192,15 @@ export const useStore = create<Store>((set, get) => ({
       const f = get().focusedAgentId
       if (f && !s.agents.some((a) => a.id === f)) set({ focusedAgentId: null, view: get().lastOverview })
     })
-    window.api.onRuntime((rt) => set({ runtimes: { ...get().runtimes, [rt.agentId]: rt } }))
+    window.api.onRuntime((rt) => {
+      const prev = get().runtimes[rt.agentId]?.status
+      const looking = get().view === 'focus' && get().focusedAgentId === rt.agentId && document.hasFocus()
+      const finished = prev === 'working' && (rt.status === 'waiting' || rt.status === 'done' || rt.status === 'error')
+      set({
+        runtimes: { ...get().runtimes, [rt.agentId]: rt },
+        ...(finished && !looking ? { unread: { ...get().unread, [rt.agentId]: true } } : rt.status === 'working' && get().unread[rt.agentId] ? { unread: Object.fromEntries(Object.entries(get().unread).filter(([k]) => k !== rt.agentId)) } : {})
+      })
+    })
     window.api.onData(({ agentId, data }) => dataListeners.get(agentId)?.forEach((fn) => fn(data)))
     window.api.servers.onData(({ serverId, data }) => dataListeners.get(`srv:${serverId}`)?.forEach((fn) => fn(data)))
     window.api.servers.onRuntime((rt) => set({ serverRuntimes: { ...get().serverRuntimes, [rt.serverId]: rt } }))
@@ -207,7 +217,11 @@ export const useStore = create<Store>((set, get) => ({
     })
   },
   selectProject: (id) => set({ selectedProjectId: id, view: get().view === 'focus' ? 'room' : get().view, focusedAgentId: null }),
-  focusAgent: (id) => set({ focusedAgentId: id, view: id ? 'focus' : get().lastOverview }),
+  unread: {},
+  focusAgent: (id) => {
+    const u = get().unread
+    set({ focusedAgentId: id, view: id ? 'focus' : get().lastOverview, ...(id && u[id] ? { unread: Object.fromEntries(Object.entries(u).filter(([k]) => k !== id)) } : {}) })
+  },
   setView: (view) => set(view === 'focus' || view === 'settings' ? { view } : { view, lastOverview: view }),
   setShowNewAgent: (showNewAgent) => set(showNewAgent ? { showNewAgent } : { showNewAgent, newAgentParentId: null }),
   menu: null,

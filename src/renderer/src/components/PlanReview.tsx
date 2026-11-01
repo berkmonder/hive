@@ -15,6 +15,9 @@ interface Step {
   removed: boolean
   comment: string
   edited: boolean
+  /** position in the original plan (steps only) */
+  orig?: number
+  added?: boolean
 }
 
 /** split a markdown plan into reviewable steps (list items) */
@@ -49,22 +52,43 @@ export function PlanReviewModal() {
   const [general, setGeneral] = useState('')
   const [editing, setEditing] = useState<number | null>(null)
   useEffect(() => {
-    if (plan) setSteps(parse(plan.plan))
+    if (plan) {
+      let k = 0
+      setSteps(parse(plan.plan).map((x) => (x.kind === 'step' ? { ...x, orig: k++ } : x)))
+    }
     setGeneral('')
     setEditing(null)
   }, [plan])
-  const changed = useMemo(() => general.trim() !== '' || steps.some((s) => s.removed || s.comment.trim() || s.edited), [steps, general])
+  const order = steps.filter((s) => s.kind === 'step' && !s.added).map((s) => s.orig)
+  const moved = order.some((o, i) => o !== i)
+  const changed = useMemo(() => moved || general.trim() !== '' || steps.some((s) => s.removed || s.comment.trim() || s.edited || s.added), [steps, general, moved])
   if (!id || !plan || !agent) return null
   const close = (): void => useStore.setState({ planOpen: null })
   const patch = (i: number, p: Partial<Step>): void => setSteps(steps.map((s, j) => (j === i ? { ...s, ...p } : s)))
+  const move = (i: number, dir: -1 | 1): void => {
+    let j = i + dir
+    while (j >= 0 && j < steps.length && steps[j].kind !== 'step') j += dir
+    if (j < 0 || j >= steps.length) return
+    const next = [...steps]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    setSteps(next)
+  }
+  const addAfter = (i: number): void => {
+    const next = [...steps]
+    next.splice(i + 1, 0, { text: '', kind: 'step', removed: false, comment: '', edited: true, added: true })
+    setSteps(next)
+    setEditing(i + 1)
+  }
   const decide = (d: 'approve' | 'revise'): void => {
     let feedback = ''
     if (d === 'revise') {
       const notes = steps
         .map((s, i) => ({ s, n: i + 1 }))
-        .filter(({ s }) => s.kind === 'step' && (s.removed || s.comment.trim() || s.edited))
-        .map(({ s }) => (s.removed ? `- REMOVE: “${s.text}”` : s.edited ? `- CHANGE to: “${s.text}”${s.comment ? ` (${s.comment})` : ''}` : `- “${s.text}”: ${s.comment}`))
-      feedback = [general.trim(), notes.length ? `Step notes:\n${notes.join('\n')}` : ''].filter(Boolean).join('\n\n')
+        .filter(({ s }) => s.kind === 'step' && (s.removed || s.comment.trim() || s.edited) && !(s.added && !s.text.trim()))
+        .map(({ s }) => (s.removed ? `- REMOVE: “${s.text}”` : s.added ? `- ADD a step: “${s.text}”${s.comment ? ` (${s.comment})` : ''}` : s.edited ? `- CHANGE to: “${s.text}”${s.comment ? ` (${s.comment})` : ''}` : `- “${s.text}”: ${s.comment}`))
+      const live = steps.filter((s) => s.kind === 'step' && !s.removed && s.text.trim())
+      const reorder = moved || steps.some((s) => s.added) ? `Use this order of steps:\n${live.map((s, i) => `${i + 1}. ${s.text.split('\n')[0]}`).join('\n')}` : ''
+      feedback = [general.trim(), notes.length ? `Step notes:\n${notes.join('\n')}` : '', reorder].filter(Boolean).join('\n\n')
     }
     window.api.automation
       .decidePlan(agent.id, d, feedback)
@@ -80,7 +104,7 @@ export function PlanReviewModal() {
           <Character head seed={agent.id} color={agent.color} status="waiting" size={32} />
           <div>
             <h2>{agent.name}'s plan</h2>
-            <p className="muted small">Comment on steps, edit or remove them, then approve – or send it back with your notes.</p>
+            <p className="muted small">Comment on steps, edit, reorder, add or remove them, then approve – or send it back with your notes.</p>
           </div>
         </div>
         <div className="plan-steps">
@@ -103,6 +127,9 @@ export function PlanReviewModal() {
                   )}
                 </div>
                 <div className="ps-actions">
+                  <button className="icon-btn" title="Move up" onClick={() => move(i, -1)}><Icon name="chevronUp" size={13} /></button>
+                  <button className="icon-btn" title="Move down" onClick={() => move(i, 1)}><span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}><Icon name="chevronUp" size={13} /></span></button>
+                  <button className="icon-btn" title="Add a step after this one" onClick={() => addAfter(i)}><Icon name="plus" size={13} /></button>
                   <button className="icon-btn" title="Comment" onClick={() => setEditing(-i - 1)}><Icon name="message" size={13} /></button>
                   <button className="icon-btn" title="Edit step" onClick={() => setEditing(i)}><Icon name="edit" size={13} /></button>
                   <button className={`icon-btn ${s.removed ? 'on' : ''}`} title={s.removed ? 'Keep step' : 'Remove step'} onClick={() => patch(i, { removed: !s.removed })}>

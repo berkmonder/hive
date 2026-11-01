@@ -49,6 +49,9 @@ export function UsageView() {
   const weekCost = sumDays((d) => d >= days[days.length - 7])
   const tokens = agents.reduce((s, x) => s + x.u.input + x.u.output + x.u.cacheWrite + x.u.cacheRead, 0)
   const work = agents.reduce((s, x) => s + x.u.workMs, 0)
+  const cacheRead = agents.reduce((s, x) => s + x.u.cacheRead, 0)
+  const promptTok = agents.reduce((s, x) => s + x.u.input + x.u.cacheRead + x.u.cacheWrite, 0)
+  const hitRate = promptTok ? Math.round((cacheRead / promptTok) * 100) : null
   const daily = days.map((d) => ({ d, v: agents.reduce((s, x) => s + (x.u.days[d] ?? 0), 0) }))
   const maxDay = Math.max(...daily.map((x) => x.v), 0.0001)
   const maxAgent = Math.max(...agents.map((x) => x.u.cost), 0.0001)
@@ -72,6 +75,7 @@ export function UsageView() {
         <Stat label="Today" value={fmtUsd(todayCost)} />
         <Stat label="Last 7 days" value={fmtUsd(weekCost)} />
         <Stat label="All time (agents)" value={fmtUsd(total)} sub={`${fmtTok(tokens)} tokens`} />
+        <Stat label="Cache hit rate" value={hitRate === null ? '–' : `${hitRate}%`} sub="prompt tokens read from cache" />
         <Stat label="Time working" value={fmtDur(work)} sub={`${agents.filter((x) => x.u.workMs > 0).length} agents`} />
         <Stat label="All Claude Code in these folders" value={fmtUsd(report.folder.cost)} sub={`${report.folder.sessions} sessions, incl. outside Hive`} />
       </div>
@@ -121,7 +125,7 @@ export function UsageView() {
 
       <p className="usage-foot muted small">
         Costs are estimates at public API list prices per model (input, output, cache write, cache read). On a Claude Pro/Max
-        subscription this is the API-equivalent value, not what you're billed. Only Claude Code agents report usage.
+        subscription this is the API-equivalent value, not what you're billed. Claude Code, Codex and Gemini sessions are counted.
       </p>
       {showReport && <WeeklyReportModal onClose={() => setReport(false)} />}
       {hover && <div className="chart-tip" style={{ left: hover.x + 12, top: hover.y - 34 }}>{hover.text}</div>}
@@ -151,7 +155,7 @@ function Row({ id, name, role, color, u, max, onHover }: { id: string; name: str
       <td>{u.sessions}</td>
       <td>{fmtTok(u.input)}</td>
       <td>{fmtTok(u.output)}</td>
-      <td>{fmtTok(u.cacheRead)}</td>
+      <td>{fmtTok(u.cacheRead)}{u.input + u.cacheRead + u.cacheWrite > 0 && <small className="muted"> · {Math.round((u.cacheRead / (u.input + u.cacheRead + u.cacheWrite)) * 100)}%</small>}</td>
       <td>{fmtTok(u.cacheWrite)}</td>
       <td>{fmtDur(u.workMs)}</td>
       <td className="num"><b>{fmtUsd(u.cost)}</b></td>

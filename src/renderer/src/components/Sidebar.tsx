@@ -18,6 +18,7 @@ export function Sidebar() {
   const { app, runtimes, selectedProjectId, selectProject, focusedAgentId, view, setShowNewAgent, groupBy, setGroupBy } = useStore()
   const [query, setQuery] = useState('')
   const [projOpen, setProjOpen] = useState(false)
+  const unread = useStore((st) => st.unread)
   const [cloning, setCloning] = useState(false)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const project = app.projects.find((p) => p.id === selectedProjectId)
@@ -36,6 +37,7 @@ export function Sidebar() {
         <button className="project-switch" onClick={() => setProjOpen(!projOpen)}>
           <Icon name="folder" />
           <span className="name">{project?.name ?? 'Select project'}</span>
+          {app.agents.some((a) => a.projectId !== selectedProjectId && unread[a.id]) && <i className="unread-dot" title="Unread replies in another project" />}
           <Icon name="chevron" />
         </button>
         {projOpen && (
@@ -44,6 +46,7 @@ export function Sidebar() {
               <button key={p.id} className={p.id === selectedProjectId ? 'on' : ''}
                 onClick={() => { selectProject(p.id); setProjOpen(false) }} title={p.path}>
                 <Icon name="folder" /> {p.name}
+                {p.id !== selectedProjectId && app.agents.some((a) => a.projectId === p.id && unread[a.id]) && <i className="unread-dot" title="Unread replies" />}
                 <span className="n">{app.agents.filter((a) => a.projectId === p.id).length}</span>
               </button>
             ))}
@@ -160,6 +163,7 @@ function AgentRow({ agent: a, depth = 0, lead }: { agent: Agent; depth?: number;
   const isLead = useStore((s) => lead ?? s.app.agents.some((x) => x.parentId === a.id))
   const rt = runtimes[a.id]
   const s: AgentStatus = rt?.status ?? 'idle'
+  const unread = useStore((st) => !!st.unread[a.id])
   return (
     <div role="button" tabIndex={0}
       className={`agent-row ${a.id === focusedAgentId && view === 'focus' ? 'active' : ''} ${menuFor === a.id ? 'menu-open' : ''} ${depth ? 'nested' : ''}`}
@@ -172,7 +176,7 @@ function AgentRow({ agent: a, depth = 0, lead }: { agent: Agent; depth?: number;
         {isLead && <span className="crown" title="Team lead"><Icon name="crown" size={11} /></span>}
       </span>
       <span className="txt">
-        <b>{a.name}</b>
+        <b>{a.name}{unread && <i className="unread-dot" title="New reply you haven't seen" />}</b>
         <small className={s === 'error' ? 'err' : ''} title={rt?.exitReason}>
           {s === 'working' ? (lastLines[a.id] || 'Working…') : s === 'error' ? (rt?.exitReason ?? 'Error') : `${a.role} · ${STATUS_LABEL[s]}`}
         </small>
