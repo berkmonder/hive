@@ -16,7 +16,14 @@ export function NewAgentModal() {
   const [name, setName] = useState(`Agent ${count + 1}`)
   const [role, setRole] = useState(preset.name)
   const [color, setColor] = useState(preset.color)
-  const [providerId, setProviderId] = useState(app.providers.some((p) => p.id === app.settings.defaultProviderId) ? app.settings.defaultProviderId : (app.providers[0]?.id ?? 'claude'))
+  const [providerId, setProviderId] = useState(() => {
+    // "Claude & Codex together": new agents go to whichever of the two this project uses less
+    if (app.settings.alternateCli && app.providers.some((p) => p.id === 'codex')) {
+      const n = (id: string): number => app.agents.filter((a) => a.projectId === selectedProjectId && a.providerId === id).length
+      return n('codex') < n('claude') ? 'codex' : 'claude'
+    }
+    return app.providers.some((p) => p.id === app.settings.defaultProviderId) ? app.settings.defaultProviderId : (app.providers[0]?.id ?? 'claude')
+  })
   const [prompt, setPrompt] = useState('')
   const [isRepo, setIsRepo] = useState(false)
   const [useWorktree, setUseWorktree] = useState(false)

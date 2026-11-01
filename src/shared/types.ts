@@ -218,6 +218,10 @@ export interface Trigger {
 }
 
 export interface ProjectSettings {
+  /** default reasoning effort for this project's agents (between the agent's own and the CLI default) */
+  effort?: 'low' | 'medium' | 'high'
+  /** Obsidian (or any) folder mirrored with project memory as Hive Memory.md */
+  memorySync?: string
   /** run after an agent finishes a turn that changed files; failures go back to the agent */
   testGuard?: boolean
   testCommand?: string
@@ -324,6 +328,8 @@ export interface AppSettings {
   restoreSession: boolean
   /** language agents should answer in ('' = whatever you write) */
   agentLanguage: string
+  /** new agents alternate between Claude Code and Codex */
+  alternateCli?: boolean
   /** after a usage limit, continue automatically when the window resets */
   resumeOnReset?: boolean
   /** pass Hive's and the shared MCP servers to Codex agents (-c mcp_servers…) */

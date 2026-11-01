@@ -288,6 +288,9 @@ function AgentSettings() {
             {providers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </Row>
+        <Row label="Claude & Codex together" hint="New agents alternate between Claude Code and Codex, so both subscriptions share the work.">
+          <Toggle on={!!s.alternateCli} onChange={(v) => save({ alternateCli: v })} />
+        </Row>
         <Row label="Git worktree isolation" hint="Each isolated agent gets its own branch and folder.">
           <Choice value={s.worktreeDefault} options={[['auto', 'From 2nd agent'], ['always', 'Always'], ['never', 'Never']]} onChange={(v) => save({ worktreeDefault: v })} />
         </Row>

@@ -375,7 +375,12 @@ const TR: Record<string, string> = {
   "Unread replies in another project": "Başka projede okunmamış cevaplar",
   "Move down": "Aşağı taşı",
   "Add a step after this one": "Bundan sonra adım ekle",
-  "Comment on steps, edit, reorder, add or remove them, then approve – or send it back with your notes.": "Adımlara yorum yaz, düzenle, sırala, ekle ya da kaldır; sonra onayla – veya notlarınla geri gönder."
+  "Comment on steps, edit, reorder, add or remove them, then approve – or send it back with your notes.": "Adımlara yorum yaz, düzenle, sırala, ekle ya da kaldır; sonra onayla – veya notlarınla geri gönder.",
+  "Claude & Codex together": "Claude ve Codex birlikte",
+  "New agents alternate between Claude Code and Codex, so both subscriptions share the work.": "Yeni ajanlar Claude Code ve Codex arasında dönüşümlü açılır, iki abonelik işi paylaşır.",
+  "🧠 Defaults for this project": "🧠 Bu projenin varsayılanları",
+  "Agents without their own setting use these.": "Kendi ayarı olmayan ajanlar bunları kullanır.",
+  "Sync memory with a folder": "Hafızayı bir klasörle eşitle"
 }
 
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [

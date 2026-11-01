@@ -482,7 +482,7 @@ function startAgent(id: string, resume: boolean, prompt?: string, forkArgs?: str
   const lang = getState().settings.agentLanguage
   if (provider.id === 'claude' && lang) extraArgs = `${extraArgs ?? ''} --append-system-prompt '${`Always write your replies to the user in ${lang}.`.replace(/'/g, `'\\''`)}'`.trim()
   // model + reasoning effort (agent overrides the CLI default)
-  const effort = agent.effort || provider.effort || ''
+  const effort = agent.effort || getState().projectSettings[agent.projectId]?.effort || provider.effort || ''
   const model = provider.model?.trim()
   const env: Record<string, string> = { ...secretEnv(agent.projectId), ...accountEnv(agent) }
   if (model && !forkArgs) extraArgs = `${extraArgs ?? ''} ${provider.id === 'claude' ? '--model' : '-m'} '${model.replace(/'/g, '')}'`.trim()

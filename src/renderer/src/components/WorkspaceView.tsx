@@ -256,6 +256,22 @@ function Automation() {
       </section>
       <section className="set-group">
         <header>
+          <h2>🧠 Defaults for this project</h2>
+          <p className="muted small">Agents without their own setting use these.</p>
+        </header>
+        <div className="set-rows">
+          <div className="set-row"><div className="set-label"><b>Reasoning effort</b><span>Claude Code and Codex · overrides the CLI default</span></div>
+            <select style={{ width: 160 }} value={s.effort ?? ''} onChange={(e) => setS({ ...s, effort: (e.target.value || undefined) as typeof s.effort })}>
+              <option value="">CLI default</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+            </select></div>
+          <div className="set-row"><div className="set-label"><b>Sync memory with a folder</b><span>e.g. your Obsidian vault – project memory is mirrored to <span className="mono">Hive Memory – {app.projects.find((p) => p.id === selectedProjectId)?.name}.md</span> there, both ways</span></div>
+            <div className="row">
+              <input className="mono" style={{ width: 260 }} placeholder="~/Obsidian/Work" value={s.memorySync ?? ''} onChange={(e) => setS({ ...s, memorySync: e.target.value || undefined })} />
+            </div></div>
+        </div>
+      </section>
+      <section className="set-group">
+        <header>
           <h2>💸 Daily budget</h2>
           <p className="muted small">Estimated Claude Code spend per day for this project (API list prices). You get alerts at 50% and 75%; at 100% every agent pauses after its current turn.</p>
         </header>

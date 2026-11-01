@@ -205,6 +205,39 @@ export function registerMore(ctx: FeatureCtx): { onData: (agentId: string, data:
     }
   }
 
+  // ---------- memory <-> folder sync (e.g. an Obsidian vault) ----------
+  const synced = new Map<string, string>() // projectId -> content at last sync
+  const syncMemory = (): void => {
+    const st = getState()
+    for (const p of st.projects) {
+      const dir = st.projectSettings[p.id]?.memorySync?.trim().replace(/^~(?=\/|$)/, homedir())
+      if (!dir || !existsSync(dir)) continue
+      const file = join(dir, `Hive Memory – ${p.name.replace(/[\\/:*?"<>|]/g, '-')}.md`)
+      const mem = st.memory[p.id] ?? ''
+      const disk = existsSync(file) ? readFileSync(file, 'utf8') : null
+      const last = synced.get(p.id)
+      try {
+        if (last === undefined && disk !== null && disk.trim() && mem.trim() && disk !== mem) {
+          // first sync with text on both sides: keep both
+          const merged = `${mem.trim()}\n\n${disk.trim()}\n`
+          writeFileSync(file, merged)
+          save((s) => (s.memory[p.id] = merged))
+          synced.set(p.id, merged)
+        } else if (disk === null || (last !== undefined && mem !== last && disk === last)) {
+          writeFileSync(file, mem) // Hive side changed (or first sync)
+          synced.set(p.id, mem)
+        } else if (disk !== mem && (last === undefined ? !mem.trim() : disk !== last)) {
+          save((s) => (s.memory[p.id] = disk)) // edited in the vault
+          synced.set(p.id, disk)
+        } else synced.set(p.id, mem)
+      } catch (e) {
+        console.warn('[memory sync]', e)
+      }
+    }
+  }
+  setInterval(syncMemory, 15_000)
+  setTimeout(syncMemory, 4000)
+
   // ---------- continue when the usage window resets ----------
   const lastApproach = new Map<string, number>()
   const resumeTimers = new Map<string, NodeJS.Timeout>()

@@ -245,7 +245,7 @@ src/
 - [ ] Per-project prompt folders shared through git
 - [x] Draft persistence (unsent messages survive switching agents and restarts)
 - [x] Prompt chaining (`{{prompt:Title}}`, `{{skill:name}}`)
-- [ ] Obsidian sync
+- [x] Obsidian sync: project memory mirrored with a vault folder, both ways
 
 **Monitoring**
 - [x] Context canary: alerts at 80 % / 90 % context and when a turn stops moving
@@ -267,10 +267,10 @@ src/
 **Usage & accounts**
 - [x] Usage alerts when an agent approaches its usage limit
 - [x] Continue (and send the queue) when the usage window resets
-- [ ] Alternate new agents between Claude Code and Codex by quota
+- [x] Claude & Codex together: new agents alternate between the two
 - [ ] Multiple accounts for Grok and Cursor
 - [x] Thinking level per card (think hard / ultrathink)
-- [ ] Reasoning effort per project
+- [x] Reasoning effort per project
 
 **Review & insight**
 - [ ] Per-task diff (filter changes by card, commit separately)
