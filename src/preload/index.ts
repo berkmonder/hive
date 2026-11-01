@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, IpcRendererEvent, webFrame } from 'electron
 import type { UsageReport } from '@shared/usage'
 import type { Conversation } from '@shared/chat'
 import type { ProcInfo } from '@shared/procs'
+import type { ReplayTurn, WeeklyReport } from '@shared/insights'
 import type { AgentRuntime, AppState, GitSummary, NewAgentInput, Agent, AgentPatch, Project, TeamEvent, RoleDef, SavedPrompt, DevServer, ServerRuntime, AppSettings, Provider, Task, TaskStatus, Schedule, Skill, McpServerDef, ProjectSettings, TestResult, Workflow, WorkflowRun, PlanReview, Conflict, Trigger, PickedElement } from '@shared/types'
 
 function on<T>(channel: string, cb: (payload: T) => void): () => void {
@@ -146,6 +147,18 @@ const api = {
     triggerPort: (): Promise<number> => ipcRenderer.invoke('triggers:port'),
     commitHistory: (agentId: string): Promise<{ hash: string; subject: string; when: string; note?: string }[]> => ipcRenderer.invoke('git:commitNote', agentId)
   },
+  insights: {
+    weekly: (projectId: string, days?: number): Promise<WeeklyReport> => ipcRenderer.invoke('report:weekly', projectId, days),
+    sessions: (agentId: string): Promise<{ path: string; id: string }[]> => ipcRenderer.invoke('replay:sessions', agentId),
+    replay: (agentId: string, path: string): Promise<ReplayTurn[]> => ipcRenderer.invoke('replay:load', agentId, path)
+  },
+  secrets: {
+    list: (): Promise<{ name: string; projectId?: string; updatedAt: number; length: number }[]> => ipcRenderer.invoke('secrets:list'),
+    set: (name: string, value: string, projectId?: string): Promise<boolean> => ipcRenderer.invoke('secrets:set', name, value, projectId),
+    remove: (name: string): Promise<void> => ipcRenderer.invoke('secrets:remove', name),
+    encrypted: (): Promise<boolean> => ipcRenderer.invoke('secrets:encrypted')
+  },
+  onEmote: (cb: (e: { agentIds: string[]; kind: string }) => void) => on('agent:emote', cb),
   onAwake: (cb: (on: boolean) => void) => on('power:awake', cb),
   onProjectPaused: (cb: (projectId: string) => void) => on('project:paused', cb),
 

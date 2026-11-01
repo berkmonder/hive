@@ -137,13 +137,17 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Project memory** shared by all Claude agents (they can add to it with `remember`).
 - **Skills:** reusable procedures agents fetch with `get_skill` (or you insert from ⌘K).
 - **Shared MCP servers:** define once, every Claude agent gets them.
+- **Secrets:** API keys stored with the system keychain, given to agents as environment variables, masked (••••••) in every terminal view; Claude agents see only the names (`list_secrets`).
 
 ### Built-in tools
 - **Code editor** (Monaco): explorer with git colours, tabs, quick open, IntelliSense with auto-import, markdown preview, auto save, VS Code / JetBrains keymaps, *Open in IDE* (VS Code, Cursor, JetBrains IDEs, Zed…).
 - **Dev servers** with detected commands and a **live preview** (device widths, auto-reload).
 - **Usage & cost:** tokens and estimated cost per agent and per day from Claude Code's session logs.
+- **Weekly report** (Usage → Weekly report): commits, lines, finished cards and cost per agent for 7 / 14 / 30 days – copy as Markdown.
+- **Session replay** (right-click → Session replay): step through a session turn by turn and see which tool calls filled the context window.
 
 ### Make it yours
+- The office reacts: agents go for a coffee while their tests run, celebrate a merge with confetti, facepalm on red tests and show a 💡 when a plan is ready.
 - Themes (Dark, Midnight, Light, System), six accent colours, interface size, fonts, cursor, keymap, notifications – all in **Settings** (⌘,).
 
 ## Keyboard shortcuts
@@ -197,7 +201,7 @@ src/
 ## Roadmap
 
 - [x] Sketch on screenshots · pick elements in the preview · idea radar · webhook triggers · commit context
-- [ ] Weekly report · session replay · secrets manager
+- [x] Weekly report · session replay · secrets manager · office animations
 - [ ] Database connections · SSH agents · localhost tunnel
 - [ ] Turkish UI · richer Codex / Gemini integration (usage, conversation view)
 - [ ] Mobile companion

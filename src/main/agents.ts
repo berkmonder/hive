@@ -91,7 +91,13 @@ export class AgentManager {
 
   private lastBuffers = new Map<string, string>()
 
-  start(agent: Agent, provider: Provider, cwd: string, opts: { resume?: boolean; prompt?: string; extraArgs?: string } = {}): void {
+  /** secret values hidden from terminal output shown in Hive */
+  private redact: string[] = []
+  setRedactions(values: string[]): void {
+    this.redact = values
+  }
+
+  start(agent: Agent, provider: Provider, cwd: string, opts: { resume?: boolean; prompt?: string; extraArgs?: string; env?: Record<string, string> } = {}): void {
     if (this.sessions.has(agent.id)) return
 
     const isWin = process.platform === 'win32'
@@ -127,6 +133,7 @@ export class AgentManager {
       env: {
         ...process.env,
         ...utf8Locale(),
+        ...opts.env,
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
         HIVE_PORT: String(this.env.hookPort),
@@ -154,7 +161,9 @@ export class AgentManager {
     // a task handed over on the command line counts as delivered now (gives the CLI time to start)
     if (opts.prompt) this.deliveredAt.set(agent.id, Date.now() + 4000)
 
-    term.onData((data) => {
+    term.onData((raw) => {
+      let data = raw
+      for (const v of this.redact) if (data.includes(v)) data = data.split(v).join('••••••')
       session.buffer = (session.buffer + data).slice(-BUFFER_LIMIT)
       session.screen.write(data)
       session.activityDirty = true

@@ -41,6 +41,8 @@ function deskOrder(agents: Agent[]): Agent[] {
 export function Office({ agents }: { agents: Agent[] }) {
   const runtimes = useStore((s) => s.runtimes)
   const lastLines = useStore((s) => s.lastLines)
+  const emotes = useStore((s) => s.emotes)
+  const testing = useStore((s) => s.testing)
   const focusAgent = useStore((s) => s.focusAgent)
   const openMenu = useStore((s) => s.openMenu)
   const setShowNewAgent = useStore((s) => s.setShowNewAgent)
@@ -83,7 +85,14 @@ export function Office({ agents }: { agents: Agent[] }) {
   const targets = useMemo(() => {
     const t = new Map<string, Target>()
     const taken = new Set<string>()
-    const loungers = ordered.filter((a) => !AT_DESK.includes(runtimes[a.id]?.status ?? 'idle'))
+    // while its tests run, an agent goes for a coffee
+    const brewing = ordered.filter((a) => testing[a.id])
+    brewing.forEach((a, i) => {
+      const s = restSpots.filter((x) => x.pose === 'coffee')[i % 3]
+      taken.add(`${Math.round(s.x)}:${Math.round(s.y)}`)
+      t.set(a.id, { key: `c:${s.x}:${s.y}`, x: s.x, y: s.y, pose: 'coffee', seated: false })
+    })
+    const loungers = ordered.filter((a) => !t.has(a.id) && !AT_DESK.includes(runtimes[a.id]?.status ?? 'idle'))
     let overflow = 0
     loungers.forEach((a, i) => {
       const st = runtimes[a.id]?.status ?? 'idle'
@@ -108,7 +117,7 @@ export function Office({ agents }: { agents: Agent[] }) {
       t.set(a.id, { key: `d:${a.id}:${d.x}:${d.y}`, x: d.chairX, y: d.chairY, pose: 'stand', seated: true })
     }
     return t
-  }, [ordered, runtimes, desks, L]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ordered, runtimes, desks, L, testing]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- simulation ----------
   const actors = useRef(new Map<string, Actor>())
@@ -246,7 +255,8 @@ export function Office({ agents }: { agents: Agent[] }) {
                 <i className="dot" />
                 {a.name}
               </div>
-              {seated && st === 'working' && lastLines[a.id] && <div className="o-thought">{lastLines[a.id]}</div>}
+              {seated && st === 'working' && lastLines[a.id] && !emotes[a.id] && <div className="o-thought">{lastLines[a.id]}</div>}
+              {seated && emotes[a.id] && <Emote kind={emotes[a.id].kind} />}
             </div>
           )
         })}
@@ -266,6 +276,7 @@ export function Office({ agents }: { agents: Agent[] }) {
         </svg>
 
         <WallScreen counts={counts} today={todayCost} />
+        {Object.values(emotes).some((e) => e.kind === 'party') && <Confetti />}
 
         {/* people on the move / in the lounge */}
         {ordered.map((a) => {
@@ -277,6 +288,8 @@ export function Office({ agents }: { agents: Agent[] }) {
             <div key={a.id} className={`o-person ${act.moving ? 'moving' : ''}`}
               style={{ left: act.x - 35, top: act.y - 98, zIndex: Math.round(act.y) + 100, ['--face' as string]: act.facing }} {...handlers(a)}>
               <div className="o-sprite"><Walker seed={a.id} color={a.color} pose={pose} status={st} /></div>
+              {testing[a.id] && !act.moving && <div className="o-emote coffee">☕ tests running…</div>}
+              {emotes[a.id] && !testing[a.id] && <Emote kind={emotes[a.id].kind} />}
               <div className="o-name">{a.name}</div>
             </div>
           )
@@ -456,5 +469,24 @@ function OfficeBackground({ width: w, height: h, loungeTop: L, door }: { width: 
         <rect x="42" y="46" width="3" height="16" rx="1.5" fill="#cbd5e1" />
       </g>
     </svg>
+  )
+}
+
+const EMOTE: Record<string, string> = { party: '🎉', thumbs: '👍 tests pass', facepalm: '🤦 tests failed', idea: '💡 plan ready' }
+function Emote({ kind }: { kind: string }) {
+  return <div className={`o-emote ${kind}`}>{EMOTE[kind] ?? kind}</div>
+}
+
+function Confetti() {
+  const bits = useMemo(
+    () => Array.from({ length: 70 }, (_, i) => ({ left: Math.random() * 100, delay: Math.random() * 1.2, dur: 2.4 + Math.random() * 1.8, hue: (i * 47) % 360, rot: Math.random() * 360 })),
+    []
+  )
+  return (
+    <div className="o-confetti" aria-hidden>
+      {bits.map((b, i) => (
+        <i key={i} style={{ left: `${b.left}%`, animationDelay: `${b.delay}s`, animationDuration: `${b.dur}s`, background: `hsl(${b.hue} 85% 62%)`, transform: `rotate(${b.rot}deg)` }} />
+      ))}
+    </div>
   )
 }

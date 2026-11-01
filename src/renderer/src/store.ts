@@ -50,6 +50,10 @@ interface Store {
   testing: Record<string, boolean>
   conflicts: Conflict[]
   budget: Record<string, number>
+  /** short reactions shown above agents in the office */
+  emotes: Record<string, { kind: string; at: number }>
+  emote: (agentIds: string[], kind: string) => void
+  replayFor: string | null
   askTarget: string | null
   morphTarget: { agentId: string; x: number; y: number } | null
   /** agent pre-selected when opening the schedule editor */
@@ -103,6 +107,17 @@ export const useStore = create<Store>((set, get) => ({
   testing: {},
   conflicts: [],
   budget: {},
+  emotes: {},
+  emote: (agentIds, kind) => {
+    const at = Date.now()
+    set({ emotes: { ...get().emotes, ...Object.fromEntries(agentIds.map((id) => [id, { kind, at }])) } })
+    setTimeout(() => {
+      const cur = { ...get().emotes }
+      for (const id of agentIds) if (cur[id]?.at === at) delete cur[id]
+      set({ emotes: cur })
+    }, kind === 'party' ? 7000 : 5500)
+  },
+  replayFor: null,
   askTarget: null,
   morphTarget: null,
   scheduleFor: null,
@@ -136,6 +151,7 @@ export const useStore = create<Store>((set, get) => ({
     au.onPlan((p) => {
       set({ plans: { ...get().plans, [p.agentId]: p } })
       if (get().focusedAgentId === p.agentId) set({ planOpen: p.agentId })
+      get().emote([p.agentId], 'idea')
     })
     au.onPlanCleared((id) => {
       const { [id]: _gone, ...rest } = get().plans
@@ -145,10 +161,12 @@ export const useStore = create<Store>((set, get) => ({
     au.onTestResult((r) => {
       set({ tests: { ...get().tests, [r.agentId]: r }, testing: { ...get().testing, [r.agentId]: false } })
       const a = get().app.agents.find((x) => x.id === r.agentId)
+      get().emote([r.agentId], r.ok ? 'thumbs' : 'facepalm')
       if (!r.ok) get().toast(`🧪 ${a?.name}: tests failed${r.sentBack ? ' – sent back to fix' : ''}`, 'error')
     })
     au.onConflicts((conflicts) => set({ conflicts }))
     au.onBudget((budget) => set({ budget }))
+    window.api.onEmote(({ agentIds, kind }) => get().emote(agentIds, kind))
     window.api.onAwake((awake) => get().awake !== awake && set({ awake }))
     window.api.media.onAttach((shot) => {
       set({ pendingShots: [...get().pendingShots, shot] })

@@ -5,7 +5,7 @@ import { useStore } from '../store'
 import { Icon, cleanError } from './common'
 import { Character } from './Character'
 
-type Tab = 'memory' | 'skills' | 'mcp' | 'procs' | 'auto'
+type Tab = 'memory' | 'skills' | 'mcp' | 'procs' | 'auto' | 'secrets'
 const newId = (): string => Math.random().toString(36).slice(2, 10)
 
 /** Project memory, skills, shared MCP servers and the process watchdog. */
@@ -20,6 +20,7 @@ export function WorkspaceView() {
           <button className={tab === 'skills' ? 'on' : ''} onClick={() => setTab('skills')}><Icon name="zap" size={13} /> Skills</button>
           <button className={tab === 'mcp' ? 'on' : ''} onClick={() => setTab('mcp')}><Icon name="plug" size={13} /> MCP servers</button>
           <button className={tab === 'auto' ? 'on' : ''} onClick={() => setTab('auto')}><Icon name="zap" size={13} /> Automation</button>
+          <button className={tab === 'secrets' ? 'on' : ''} onClick={() => setTab('secrets')}><Icon name="lock" size={13} /> Secrets</button>
           <button className={tab === 'procs' ? 'on' : ''} onClick={() => setTab('procs')}>
             <Icon name="activity" size={13} /> Processes{leftovers > 0 && <span className="count-badge warn">{leftovers}</span>}
           </button>
@@ -31,6 +32,7 @@ export function WorkspaceView() {
         {tab === 'mcp' && <McpServers />}
         {tab === 'procs' && <Processes />}
         {tab === 'auto' && <Automation />}
+        {tab === 'secrets' && <Secrets />}
       </div>
     </div>
   )
@@ -262,6 +264,67 @@ function Automation() {
         {dirty && <button className="btn ghost sm" onClick={() => setS(saved)}>Discard</button>}
         <button className="btn sm" disabled={!dirty} onClick={() => window.api.automation.saveProject(selectedProjectId, s).then(() => toast('Automation saved', 'success'))}>Save</button>
       </div>
+    </div>
+  )
+}
+
+function Secrets() {
+  const { app, selectedProjectId, toast } = useStore()
+  const [list, setList] = useState<{ name: string; projectId?: string; updatedAt: number; length: number }[]>([])
+  const [enc, setEnc] = useState(true)
+  const [name, setName] = useState('')
+  const [value, setValue] = useState('')
+  const [scope, setScope] = useState<'all' | 'project'>('project')
+  const load = (): void => {
+    window.api.secrets.list().then(setList)
+    window.api.secrets.encrypted().then(setEnc)
+  }
+  useEffect(load, [])
+  const add = (): void => {
+    window.api.secrets
+      .set(name.trim(), value, scope === 'project' ? selectedProjectId ?? undefined : undefined)
+      .then(() => {
+        toast(`${name} saved – restart agents to pick it up`, 'success')
+        setName('')
+        setValue('')
+        load()
+      })
+      .catch((e) => toast(cleanError(e), 'error'))
+  }
+  const proj = (id?: string): string => (id ? app.projects.find((p) => p.id === id)?.name ?? '?' : 'All projects')
+  return (
+    <div className="ws-pane">
+      <div className="ws-intro">
+        <h2><Icon name="lock" size={16} /> Secrets</h2>
+        <p className="muted small">
+          API keys and passwords for your agents. They get them as <b>environment variables</b> (<code>$STRIPE_KEY</code>), Claude agents can list the
+          names with <code>list_secrets</code>, and values are masked (••••••) wherever Hive shows terminal output. Stored {enc ? 'encrypted with your system keychain' : 'unencrypted (no keychain available)'}.
+        </p>
+      </div>
+      <div className="secret-add">
+        <input className="mono" placeholder="NAME (e.g. STRIPE_API_KEY)" value={name} onChange={(e) => setName(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'))} />
+        <input type="password" placeholder="value" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && name && value && add()} />
+        <div className="seg sm">
+          <button className={scope === 'project' ? 'on' : ''} style={{ width: 'auto', padding: '0 10px' }} onClick={() => setScope('project')}>This project</button>
+          <button className={scope === 'all' ? 'on' : ''} style={{ width: 'auto', padding: '0 10px' }} onClick={() => setScope('all')}>All</button>
+        </div>
+        <button className="btn sm" disabled={!name.trim() || !value} onClick={add}><Icon name="plus" size={12} /> Add</button>
+      </div>
+      <div className="secret-list">
+        {list.map((s) => (
+          <div key={s.name} className="secret-row">
+            <Icon name="lock" size={13} />
+            <code>{s.name}</code>
+            <span className="mono muted">{'•'.repeat(Math.min(12, s.length))}</span>
+            <span className="chip">{proj(s.projectId)}</span>
+            <div className="spacer" />
+            <span className="muted small">{new Date(s.updatedAt).toLocaleDateString()}</span>
+            <button className="icon-btn danger" title="Delete" onClick={() => confirm(`Delete ${s.name}?`) && window.api.secrets.remove(s.name).then(load)}><Icon name="trash" size={13} /></button>
+          </div>
+        ))}
+        {!list.length && <p className="muted small">No secrets yet.</p>}
+      </div>
+      <p className="muted small">Note: an agent can still print a variable it has access to – masking only hides values in Hive's views. Give each project only the secrets it needs.</p>
     </div>
   )
 }

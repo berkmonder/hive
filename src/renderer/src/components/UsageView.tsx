@@ -3,6 +3,7 @@ import type { AgentUsage, UsageReport } from '@shared/usage'
 import { useStore } from '../store'
 import { Character } from './Character'
 import { Icon } from './common'
+import { WeeklyReportModal } from './Insights'
 
 export const fmtTok = (n: number): string => (n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k` : `${n}`)
 export const fmtUsd = (n: number): string => (n >= 100 ? `$${n.toFixed(0)}` : n >= 1 ? `$${n.toFixed(2)}` : n > 0 ? `$${n.toFixed(3)}` : '$0')
@@ -32,6 +33,7 @@ export function UsageView() {
   const [scope, setScope] = useState<'project' | 'all'>('project')
   const { report, refresh } = useUsage(scope === 'project' ? selectedProjectId : null, 15000)
   const [hover, setHover] = useState<{ x: number; y: number; text: string } | null>(null)
+  const [showReport, setReport] = useState(false)
   const days = useMemo(() => lastDays(14), [])
   const today = days[days.length - 1]
 
@@ -62,6 +64,7 @@ export function UsageView() {
         </div>
         <div className="spacer" />
         <span className="muted small">Updated {new Date(report.generatedAt).toLocaleTimeString()}</span>
+        <button className="btn ghost sm" onClick={() => setReport(true)}><Icon name="list" size={13} /> Weekly report</button>
         <button className="icon-btn" title="Refresh" onClick={refresh}><Icon name="refresh" size={14} /></button>
       </header>
 
@@ -120,6 +123,7 @@ export function UsageView() {
         Costs are estimates at public API list prices per model (input, output, cache write, cache read). On a Claude Pro/Max
         subscription this is the API-equivalent value, not what you're billed. Only Claude Code agents report usage.
       </p>
+      {showReport && <WeeklyReportModal onClose={() => setReport(false)} />}
       {hover && <div className="chart-tip" style={{ left: hover.x + 12, top: hover.y - 34 }}>{hover.text}</div>}
     </div>
   )

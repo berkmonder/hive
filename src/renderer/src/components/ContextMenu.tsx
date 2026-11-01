@@ -68,7 +68,8 @@ export function ContextMenu() {
     ...(agent.providerId === 'claude'
       ? ([
           { label: 'Ask (side question)…', icon: 'bubble', run: c.ask },
-          { label: 'Fork conversation', icon: 'fork', run: c.fork }
+          { label: 'Fork conversation', icon: 'fork', run: c.fork },
+          { label: 'Session replay', icon: 'activity', run: c.replay }
         ] as Item[])
       : []),
     ...(agent.providerId === 'claude' ? ([{ label: 'Restart in plan mode', icon: 'list', run: c.planMode }] as Item[]) : []),

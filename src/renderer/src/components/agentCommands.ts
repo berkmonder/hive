@@ -39,6 +39,7 @@ export function agentCommands(agent: Agent) {
     },
     planMode: () => run(window.api.automation.planMode(agent.id), `${agent.name} restarted in plan mode`),
     runTests: () => run(window.api.automation.runTests(agent.id)),
+    replay: () => useStore.setState({ replayFor: agent.id }),
     remove: () => {
       const extra = agent.worktreePath ? '\n\nIts worktree folder will be removed too (the branch is kept).' : ''
       if (confirm(`Remove agent "${agent.name}"?${extra}`)) run(window.api.removeAgent(agent.id), `${agent.name} removed`)

@@ -16,6 +16,7 @@ import { SplitView } from './components/SplitView'
 import { Palette } from './components/Palette'
 import { AskBubble, MorphMenu } from './components/AgentExtras'
 import { PlanReviewModal } from './components/PlanReview'
+import { ReplayModal } from './components/Insights'
 import { LibraryModal, SendPromptPicker } from './components/Library'
 import { ContextMenu } from './components/ContextMenu'
 import { Toasts } from './components/Toasts'
@@ -218,6 +219,7 @@ export default function App() {
       <AskBubble />
       <MorphMenu />
       <PlanReviewModal />
+      <ReplayModal />
       <SendPromptPicker />
       {showLibrary && <LibraryModal />}
       <Toasts />

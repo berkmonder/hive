@@ -14,6 +14,7 @@ import { usageReport } from './usage'
 import { registerFeatures } from './features'
 import { registerAutomation } from './automation'
 import { registerExtras } from './extras'
+import { registerInsights, secretEnv, secretValues } from './insights'
 import { utf8Locale } from './agents'
 import { childrenOf, handleMcpHttp, initTeam, mcpArgsFor, wouldCycle } from './team'
 import { Agent, AgentPatch, AgentRuntime, AppSettings, DevServer, Provider, NewAgentInput, Project, RoleDef, SavedPrompt } from '@shared/types'
@@ -290,10 +291,13 @@ function registerIpc(): void {
     return hash
   })
 
-  ipcMain.handle('git:merge', (_e, id: string) => {
+  ipcMain.handle('git:merge', async (_e, id: string) => {
     const a = findAgent(id)
     if (!a.branch) throw new Error('This agent does not use its own branch')
-    return git.mergeBranch(findProject(a.projectId).path, a.branch)
+    const res = await git.mergeBranch(findProject(a.projectId).path, a.branch)
+    // a little celebration in the office
+    send('agent:emote', { agentIds: getState().agents.filter((x) => x.projectId === a.projectId).map((x) => x.id), kind: 'party' })
+    return res
   })
   ipcMain.handle('git:fileDiff', (_e, id: string, file: string) => git.fileDiff(agentCwd(findAgent(id)), file))
   ipcMain.handle('git:revertFile', (_e, id: string, file: string) => git.revertFile(agentCwd(findAgent(id)), file))
@@ -449,7 +453,7 @@ function startAgent(id: string, resume: boolean, prompt?: string, forkArgs?: str
   }
   if (forkArgs) extraArgs = `${extraArgs ?? ''} ${forkArgs}`.trim()
   if (agent.paused) updateState((s) => s.agents.forEach((a) => a.id === id && delete a.paused))
-  agents.start(agent, provider, cwd, { resume, prompt, extraArgs })
+  agents.start(agent, provider, cwd, { resume, prompt, extraArgs, env: secretEnv(agent.projectId) })
 }
 
 async function removeAgent(agent: Agent, project: Project): Promise<void> {
@@ -523,6 +527,8 @@ app.whenReady().then(async () => {
   features = registerFeatures(fctx)
   automation = registerAutomation(fctx)
   extras = registerExtras(fctx)
+  registerInsights(fctx).onSecretsChanged(() => agents.setRedactions(secretValues()))
+  agents.setRedactions(secretValues())
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

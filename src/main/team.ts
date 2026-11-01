@@ -17,6 +17,7 @@ import type { Agent, TeamEvent } from '@shared/types'
 import { lastLines, pickActivity } from '@shared/text'
 import type { AgentManager } from './agents'
 import { getState } from './store'
+import { secretNames } from './insights'
 
 export interface TeamDeps {
   agents: AgentManager
@@ -261,6 +262,12 @@ function toolsFor(me: Agent): object[] {
       description: 'Add one short note to the shared project memory (a decision, convention, architecture fact or pitfall). Other agents will see it.',
       inputSchema: { type: 'object', properties: { note: { type: 'string' } }, required: ['note'] }
     })
+  if (secretNames(me.projectId).length)
+    tools.push({
+      name: 'list_secrets',
+      description: 'Names of the secrets available to you as environment variables (values are never shown). Use them as $NAME in commands or process.env.NAME in code – never print them.',
+      inputSchema: { type: 'object', properties: {} }
+    })
   if (getState().skills.length)
     tools.push(
       { name: 'list_skills', description: 'List the reusable procedures (skills) available in Hive.', inputSchema: { type: 'object', properties: {} } },
@@ -395,6 +402,11 @@ async function callTool(me: Agent, name: string, args: Record<string, unknown>):
       if (!note) throw new Error('note is empty')
       deps.remember(me.projectId, `- ${note} _(${me.name}, ${new Date().toISOString().slice(0, 10)})_`)
       return 'Saved to project memory.'
+    }
+
+    case 'list_secrets': {
+      const n = secretNames(me.projectId)
+      return n.length ? `Available as environment variables (values hidden):\n${n.map((x) => `- $${x}`).join('\n')}` : 'No secrets configured.'
     }
 
     case 'list_skills':
