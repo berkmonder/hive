@@ -338,6 +338,41 @@ export function registerAutomation(ctx: FeatureCtx): {
     }
   }, 15_000)
 
+  // ---------- context canary: context window filling up, or a turn that stopped moving ----------
+  const ctxWarned = new Map<string, number>()
+  const stuckWarned = new Set<string>()
+  const t4 = setInterval(async () => {
+    const now = Date.now()
+    for (const id of agents.runningIds()) {
+      const a = getState().agents.find((x) => x.id === id)
+      const rt = agents.runtime(id)
+      if (!a) continue
+      // stuck: "working" but no terminal output for 10 minutes
+      if (rt.status === 'working' && now - rt.lastActivity > 10 * 60_000) {
+        if (!stuckWarned.has(id)) {
+          stuckWarned.add(id)
+          notify(`🐤 ${a.name} looks stuck`, 'Working but no output for 10 minutes – check the terminal or press Esc.', id)
+          ctx.send('toast', `🐤 ${a.name}: no output for 10 minutes – it may be stuck`)
+        }
+      } else stuckWarned.delete(id)
+      const path = a.sessions?.[a.sessions.length - 1]
+      if (!path) continue
+      try {
+        const c = (await readConversation(path)).context
+        if (!c) continue
+        const pct = Math.round((c.used / c.window) * 100)
+        const level = pct >= 90 ? 90 : pct >= 80 ? 80 : 0
+        if (level && (ctxWarned.get(id) ?? 0) < level) {
+          ctxWarned.set(id, level)
+          notify(`🐤 ${a.name}: context ${pct}% full`, 'Answers get worse as the window fills – consider /compact or a fresh session.', id)
+          ctx.send('toast', `🐤 ${a.name}: context ${pct}% full – consider /compact`)
+        } else if (!level) ctxWarned.delete(id)
+      } catch {
+        /* no transcript yet */
+      }
+    }
+  }, 60_000)
+
   // ---------- advisor: which agent fits a task best ----------
   ipcMain.handle('advisor:suggest', async (_e, projectId: string, task: string) => {
     const list = getState().agents.filter((a) => a.projectId === projectId)
@@ -450,6 +485,7 @@ export function registerAutomation(ctx: FeatureCtx): {
       clearInterval(t1)
       clearInterval(t2)
       clearInterval(t3)
+      clearInterval(t4)
     }
   }
 }

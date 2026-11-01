@@ -114,6 +114,9 @@ export function AccountsSettings() {
           </select>
         </div>
       </div></div>
+      <div className="set-row"><div className="set-label"><b>Continue when the limit resets</b><span>If no other account takes over, the agent continues (and its queue goes out) when the usage window resets.</span></div><div className="set-control">
+        <input type="checkbox" checked={s.resumeOnReset !== false} onChange={(e) => saveSettings({ resumeOnReset: e.target.checked })} />
+      </div></div>
       <div className="set-row"><div className="set-label"><b>Bring agents back on launch</b><span>Agents and dev servers that were running when you quit start again (conversations resume).</span></div><div className="set-control">
         <input type="checkbox" checked={s.restoreSession} onChange={(e) => saveSettings({ restoreSession: e.target.checked })} />
       </div></div>
@@ -445,6 +448,28 @@ export function QuestionModal() {
           <button className="btn ghost" onClick={() => { useStore.getState().focusAgent(cur.agentId); setQs(qs.slice(1)) }}>Answer in terminal</button>
           <button className="btn" onClick={answer}><Icon name="send" size={13} /> Answer</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/* ---------- where everyone left off (after resuming a paused project) ---------- */
+export function PauseSummary() {
+  const [list, setList] = useState<{ agentId: string; name: string; text: string }[]>([])
+  useEffect(() => window.api.onPauseSummary(setList), [])
+  if (!list.length) return null
+  return (
+    <div className="backdrop" onMouseDown={() => setList([])}>
+      <div className="modal pause-summary" onMouseDown={(e) => e.stopPropagation()}>
+        <h2><Icon name="play" size={15} /> Where everyone left off</h2>
+        <p className="muted small">The last reply of each agent before the pause – they continue now.</p>
+        {list.map((x) => (
+          <div key={x.agentId} className="ps-item" onClick={() => { useStore.getState().focusAgent(x.agentId); setList([]) }}>
+            <b>{x.name}</b>
+            <p>{x.text.replace(/[#*`>_]/g, '').slice(0, 400)}{x.text.length > 400 ? '…' : ''}</p>
+          </div>
+        ))}
+        <div className="modal-foot"><button className="btn" onClick={() => setList([])}>OK</button></div>
       </div>
     </div>
   )

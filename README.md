@@ -231,7 +231,7 @@ src/
 
 **Scheduling & triggers**
 - [x] Monthly schedules and catch-up of missed runs
-- [ ] Run "when the quota resets"
+- [x] Continue "when the quota resets"
 - [x] Webhook signature verification and event / text filters
 
 **Sessions & workspace**
@@ -240,15 +240,18 @@ src/
 - [ ] Non-code workspaces / non-developer mode
 
 **Prompts & voice**
-- [ ] Voice mode and read-aloud replies
+- [x] Read-aloud replies (🔊 in the conversation view, optional auto-read)
+- [ ] Voice mode
 - [ ] Per-project prompt folders shared through git
 - [x] Draft persistence (unsent messages survive switching agents and restarts)
-- [ ] Prompt chaining · Obsidian sync
+- [x] Prompt chaining (`{{prompt:Title}}`, `{{skill:name}}`)
+- [ ] Obsidian sync
 
 **Monitoring**
-- [ ] Status island · context canary · adaptive mode
+- [x] Context canary: alerts at 80 % / 90 % context and when a turn stops moving
+- [ ] Status island · adaptive mode
 - [x] Cache hit rate and unread indicators
-- [ ] Pause summaries
+- [x] Pause summaries (where everyone left off, on resume)
 
 **Review & QA**
 - [ ] Per-agent diff on a shared branch · "Ask Claude" about a diff
@@ -259,14 +262,15 @@ src/
 - [ ] More provider presets · proxy per CLI · tool sets
 - [ ] MCP servers for backlog, commands and prompts
 - [ ] Saved SSH servers, SSH tunnels, AWS SSM, Cloud SQL
-- [ ] CLI doctor
+- [x] CLI doctor (Settings → CLI Doctor)
 
 **Usage & accounts**
-- [ ] Usage alerts when a Claude / Codex quota window passes a threshold
-- [ ] Send the message queue when the usage window resets
+- [x] Usage alerts when an agent approaches its usage limit
+- [x] Continue (and send the queue) when the usage window resets
 - [ ] Alternate new agents between Claude Code and Codex by quota
 - [ ] Multiple accounts for Grok and Cursor
-- [ ] Reasoning effort per project and per card
+- [x] Thinking level per card (think hard / ultrathink)
+- [ ] Reasoning effort per project
 
 **Review & insight**
 - [ ] Per-task diff (filter changes by card, commit separately)
@@ -276,7 +280,8 @@ src/
 - [ ] Commit context as a private gist (besides the git note)
 
 **Tools**
-- [ ] Write shared MCP servers to every CLI's config (Codex, Gemini), not just Claude
+- [x] Shared MCP servers (and Hive's tools) for Codex agents
+- [ ] Shared MCP servers for Gemini
 - [ ] Saved per-project commands (run with one click or remotely)
 - [ ] Figma capture via a Chrome extension
 - [ ] Read aloud with AI summaries · review dictated text before sending

@@ -90,6 +90,33 @@ export function mcpArgsFor(agent: Agent, port: number, inline = false): string |
   return `--mcp-config '${file.replace(/'/g, `'\\''`)}'`
 }
 
+/** The same servers for Codex CLI, as `-c mcp_servers.<name>.…` overrides (TOML values). */
+export function codexMcpArgs(agent: Agent, port: number): string | undefined {
+  const sq = (v: string): string => `'${v.replace(/'/g, `'\\''`)}'`
+  const str = (v: string): string => JSON.stringify(v)
+  const table = (kv: [string, string][]): string => `{${kv.map(([k, v]) => `${str(k)}=${str(v)}`).join(', ')}}`
+  const out: string[] = []
+  const add = (name: string, key: string, val: string): void => {
+    out.push(`-c ${sq(`mcp_servers.${name}.${key}=${val}`)}`)
+  }
+  if (wantsHive(agent)) {
+    add('hive', 'url', str(`http://127.0.0.1:${port}/mcp/${agent.id}`))
+    add('hive', 'http_headers', table([['Authorization', `Bearer ${TOKEN}`]]))
+  }
+  for (const m of getState().mcpServers.filter((x) => x.enabled && x.name.trim())) {
+    const key = m.name.trim().replace(/[^\w-]/g, '-')
+    if (m.type === 'http' && m.url) {
+      add(key, 'url', str(m.url))
+      if (lines(m.env).length) add(key, 'http_headers', table(lines(m.env)))
+    } else if (m.command) {
+      add(key, 'command', str(m.command))
+      add(key, 'args', JSON.stringify(splitArgs(m.args)))
+      if (lines(m.env).length) add(key, 'env', table(lines(m.env)))
+    }
+  }
+  return out.length ? out.join(' ') : undefined
+}
+
 // ---------- HTTP entry ----------
 export function handleMcpHttp(req: IncomingMessage, res: ServerResponse): boolean {
   const m = req.url?.match(/^\/mcp\/([\w-]+)/)

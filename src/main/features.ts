@@ -10,6 +10,7 @@ import { basename, join } from 'path'
 import { randomUUID } from 'crypto'
 import type { Agent, McpServerDef, Project, Schedule, Skill, Task, TaskStatus } from '@shared/types'
 import { nextRun } from '@shared/schedule'
+import { expandRefs } from '@shared/library'
 import { getState, updateState } from './store'
 import type { AgentManager } from './agents'
 import type { ServerManager } from './servers'
@@ -32,7 +33,9 @@ export interface FeatureCtx {
   agentCwd: (a: Agent) => string
 }
 
-export const fill = (tpl: string, t: Task): string => tpl.replace(/\{\{title\}\}/g, t.title).replace(/\{\{body\}\}/g, t.body || '(no details)')
+export const fill = (tpl: string, t: Task): string =>
+  tpl.replace(/\{\{title\}\}/g, t.title).replace(/\{\{body\}\}/g, t.body || '(no details)') +
+  (t.effort === 'high' ? '\n\nultrathink' : t.effort === 'medium' ? '\n\nThink hard about this.' : '')
 const sessionIdOf = (a: Agent): string | undefined => {
   const t = a.sessions?.[a.sessions.length - 1]
   return t ? basename(t, '.jsonl') : undefined
@@ -136,7 +139,7 @@ export function registerFeatures(ctx: FeatureCtx): { dispose: () => void; onPaus
       if (x.kind === 'once') x.enabled = false
     })
     if (!agent) return 'missing agent'
-    const how = handTo(ctx, agent.id, sc.prompt, sc.fresh)
+    const how = handTo(ctx, agent.id, expandRefs(sc.prompt, getState().prompts, getState().skills), sc.fresh)
     notify(ctx, `⏰ ${sc.title || 'Scheduled task'}`, `${agent.name}: ${how === 'queued' ? 'queued (agent busy)' : 'started'}`, agent.id)
     return how
   }
@@ -268,8 +271,21 @@ export function registerFeatures(ctx: FeatureCtx): { dispose: () => void; onPaus
     pauseWatch.set(projectId, new Set(list.map((a) => a.id)))
     return list.length
   })
-  ipcMain.handle('project:resume', (_e, projectId: string) => {
+  ipcMain.handle('project:resume', async (_e, projectId: string) => {
     const list = getState().agents.filter((a) => a.projectId === projectId && a.paused)
+    // "where everyone left off": each agent's last reply before the pause
+    const summary: { agentId: string; name: string; text: string }[] = []
+    for (const a of list) {
+      const path = a.sessions?.[a.sessions.length - 1]
+      if (!path) continue
+      try {
+        const last = [...(await readConversation(path)).items].reverse().find((i) => i.kind === 'assistant')
+        if (last) summary.push({ agentId: a.id, name: a.name, text: last.text.slice(0, 600) })
+      } catch {
+        /* no transcript */
+      }
+    }
+    if (summary.length) ctx.send('pause:summary', summary)
     save((s) => s.agents.forEach((a) => a.projectId === projectId && delete a.paused))
     for (const a of list) if (!agents.isRunning(a.id)) ctx.startAgent(a.id, true)
     for (const a of getState().agents.filter((x) => x.projectId === projectId)) agents.cancelPause(a.id)

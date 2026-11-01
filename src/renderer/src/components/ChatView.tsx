@@ -5,9 +5,12 @@ import type { Conversation } from '@shared/chat'
 import { useStore } from '../store'
 import { Icon } from './common'
 import { fmtTok } from './UsageView'
+import { speak } from '../speech'
 
 const md = new Marked({ gfm: true, breaks: true })
 const html = (s: string): string => DOMPurify.sanitize(md.parse(s, { async: false }) as string)
+
+
 
 /** Polls the agent's Claude Code transcript (only while something shows it). */
 export function useConversation(agentId: string, enabled: boolean, everyMs = 2500): (Conversation & { none?: boolean }) | null {
@@ -49,6 +52,8 @@ export function ChatView({ agentId, conv }: { agentId: string; conv: (Conversati
   const end = useRef<HTMLDivElement>(null)
   const box = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
+  const [speaking, setSpeaking] = useState<number | null>(null)
+  useEffect(() => () => window.speechSynthesis?.cancel(), [])
   const agent = useStore((s) => s.app.agents.find((a) => a.id === agentId))
   const items = conv?.items ?? []
   const rendered = useMemo(() => items.map((it) => (it.kind === 'tool' ? '' : html(it.text))), [items])
@@ -76,7 +81,19 @@ export function ChatView({ agentId, conv }: { agentId: string; conv: (Conversati
           </details>
         ) : (
           <div key={i} className={`chat-msg ${it.kind}`}>
-            <div className="chat-who">{it.kind === 'user' ? 'You' : agent.name}{it.at ? <time>{new Date(it.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time> : null}</div>
+            <div className="chat-who">{it.kind === 'user' ? 'You' : agent.name}{it.at ? <time>{new Date(it.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time> : null}
+              {it.kind === 'assistant' && (
+                <button className={`icon-btn chat-speak ${speaking === i ? 'on' : ''}`} title={speaking === i ? 'Stop reading' : 'Read aloud'} onClick={() => {
+                  if (speaking === i) {
+                    window.speechSynthesis?.cancel()
+                    setSpeaking(null)
+                  } else {
+                    setSpeaking(i)
+                    speak(it.text, () => setSpeaking((x) => (x === i ? null : x)))
+                  }
+                }}><Icon name="volume" size={12} /></button>
+              )}
+            </div>
             <div className="md-body chat-body" dangerouslySetInnerHTML={{ __html: rendered[i] }} />
           </div>
         )

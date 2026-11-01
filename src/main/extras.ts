@@ -10,6 +10,7 @@ import { getState, updateState } from './store'
 import type { FeatureCtx } from './features'
 import { runClaude } from './ai'
 import { readConversation } from './transcript'
+import { expandRefs } from '@shared/library'
 
 /** Script injected into the preview frame: hover highlight, click returns a description of the element. */
 const PICKER = `new Promise((resolve) => {
@@ -170,7 +171,7 @@ export function registerExtras(ctx: FeatureCtx): { dispose: () => void; commitNo
           /* plain text */
         }
         const event = String(req.headers['x-github-event'] ?? req.headers['x-event'] ?? '')
-        const text = t.prompt
+        const text = expandRefs(t.prompt, getState().prompts, getState().skills)
           .replace(/\{\{payload\}\}/g, summary.slice(0, 6000))
           .replace(/\{\{event\}\}/g, event || 'webhook')
         const a = getState().agents.find((x) => x.id === t.agentId)

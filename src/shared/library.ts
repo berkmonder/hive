@@ -124,6 +124,20 @@ export const DEFAULT_ROLES: RoleDef[] = [
   }
 ]
 
+/**
+ * Prompt chaining: {{prompt:Title}} pulls in another saved prompt, {{skill:name}} a skill's steps.
+ * Shared rules live in one prompt and are reused everywhere (nested up to 5 levels).
+ */
+export function expandRefs(body: string, prompts: SavedPrompt[], skills: { name: string; body: string }[] = [], depth = 0): string {
+  if (depth > 5) return body
+  return body.replace(/\{\{\s*(prompt|skill)\s*:\s*([^}]+?)\s*\}\}/gi, (m, kind: string, name: string) => {
+    const n = name.toLowerCase()
+    if (kind.toLowerCase() === 'skill') return skills.find((s) => s.name.toLowerCase() === n)?.body ?? m
+    const p = prompts.find((x) => x.title.toLowerCase() === n || x.id === name)
+    return p ? expandRefs(p.body, prompts, skills, depth + 1) : m
+  })
+}
+
 export function fillPrompt(body: string, vars: Partial<Record<(typeof PROMPT_VARS)[number], string>>): string {
   return body.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, k: string) => vars[k as keyof typeof vars] ?? m)
 }

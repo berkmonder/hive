@@ -5,13 +5,14 @@ import { FONTS, LAYOUT_DEFAULTS, fontStack, useLayout, type Layout } from '../la
 import { HiveLogo, Icon, cleanError } from './common'
 import { AccountsSettings, CloneRepoModal } from './More'
 
-type Section = 'projects' | 'appearance' | 'terminal' | 'editor' | 'agents' | 'input' | 'notifications' | 'about'
+type Section = 'projects' | 'doctor' | 'appearance' | 'terminal' | 'editor' | 'agents' | 'input' | 'notifications' | 'about'
 const SECTIONS: { id: Section; name: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
   { id: 'projects', name: 'Projects', icon: 'folder' },
   { id: 'appearance', name: 'Appearance', icon: 'palette' },
   { id: 'terminal', name: 'Terminal', icon: 'terminal' },
   { id: 'editor', name: 'Editor & review', icon: 'code' },
   { id: 'agents', name: 'Agents & CLIs', icon: 'cpu' },
+  { id: 'doctor', name: 'CLI Doctor', icon: 'activity' },
   { id: 'input', name: 'Input & AI helpers', icon: 'mic' },
   { id: 'notifications', name: 'Notifications', icon: 'bell' },
   { id: 'about', name: 'About & data', icon: 'info' }
@@ -50,6 +51,7 @@ export function SettingsView() {
         {section === 'terminal' && <TerminalSettings />}
         {section === 'editor' && <EditorSettings />}
         {section === 'agents' && <AgentSettings />}
+        {section === 'doctor' && <Doctor />}
         {section === 'input' && <InputSettings />}
         {section === 'notifications' && <NotificationSettings />}
         {section === 'about' && <About />}
@@ -303,6 +305,9 @@ function AgentSettings() {
         <Row label="Pause idle agents" hint="Stop agents that waited this long; ▶ / Resume continues the conversation.">
           <Choice value={s.autoPauseMin} options={[[0, 'Never'], [30, '30 min'], [60, '1 h'], [180, '3 h']]} onChange={(v) => save({ autoPauseMin: v })} />
         </Row>
+        <Row label="MCP servers for Codex" hint="Codex agents also get Hive's tools (team, memory, skills, databases) and your shared MCP servers. Needs a recent Codex.">
+          <Toggle on={s.codexMcp !== false} onChange={(v) => save({ codexMcp: v })} />
+        </Row>
         <Row label="Project memory" hint="Shared notes Claude Code agents get at start (Memory tab).">
           <Choice value={s.memoryMode} options={[['readwrite', 'Read & write'], ['read', 'Read only'], ['off', 'Off']]} onChange={(v) => save({ memoryMode: v })} />
         </Row>
@@ -404,6 +409,11 @@ function InputSettings() {
   const [s, save] = useSettings()
   return (
     <>
+      <Group title="Read aloud" hint="🔊 on any reply in the conversation view reads it out with your system voice (offline).">
+        <Row label="Read replies automatically" hint="When an agent finishes its turn.">
+          <Choice value={s.readAloud ?? 'off'} options={[['off', 'Off'], ['focused', 'Open agent'], ['all', 'Every agent']]} onChange={(v) => save({ readAloud: v })} />
+        </Row>
+      </Group>
       <Group title="Voice dictation" hint="🎤 in the message box. Audio is sent to OpenAI if you add a key, otherwise to a local Whisper command – nothing else.">
         <Row label="OpenAI API key" hint="Uses gpt-4o-mini-transcribe (about $0.003 per minute).">
           <input type="password" style={{ width: 260 }} placeholder="sk-…" defaultValue={s.openaiKey} onBlur={(e) => e.target.value !== s.openaiKey && save({ openaiKey: e.target.value.trim() })} />
@@ -535,6 +545,56 @@ function ProjectsSettings() {
         </Row>
       </Group>
       {cloning && <CloneRepoModal onClose={() => setCloning(false)} />}
+    </>
+  )
+}
+
+type DoctorReport = Awaited<ReturnType<typeof window.api.doctor>>
+function Doctor() {
+  const [r, setR] = useState<DoctorReport | null>(null)
+  const [busy, setBusy] = useState(false)
+  const run = (): void => {
+    setBusy(true)
+    window.api.doctor().then(setR).catch((e) => useStore.getState().toast(cleanError(e), 'error')).finally(() => setBusy(false))
+  }
+  useEffect(run, [])
+  const ok = (b: boolean): ReactNode => <span className={`doc-mark ${b ? 'ok' : 'bad'}`}>{b ? '✓' : '✗'}</span>
+  return (
+    <>
+      <Group title="CLI Doctor" hint="Checks your agent CLIs and tools and explains why an agent failed to start. Read-only – nothing is installed or changed.">
+        <div className="row"><span className="muted small">Shell: <span className="mono">{r?.shell ?? '…'}</span></span><div className="spacer" />
+          <button className="btn ghost sm" disabled={busy} onClick={run}><Icon name="refresh" size={13} /> {busy ? 'Checking…' : 'Run again'}</button></div>
+      </Group>
+      {r && r.failures.length > 0 && (
+        <Group title="Agents that failed" hint="From the last lines of their terminal.">
+          {r.failures.map((f) => (
+            <div key={f.agentId} className="doc-fail">
+              <b>{f.name}</b>{f.reason && <span className="muted small"> · {f.reason}</span>}
+              {f.tail && <pre className="mono">{f.tail}</pre>}
+              {f.hints.length ? f.hints.map((h) => <p key={h} className="doc-hint">→ {h}</p>) : <p className="muted small">No known cause – open the agent's terminal for the full output.</p>}
+            </div>
+          ))}
+        </Group>
+      )}
+      {r && (
+        <Group title="Agent CLIs">
+          {r.clis.map((c) => (
+            <Row key={c.id} label={c.name} hint={c.path ? <span className="mono">{c.path}{c.version ? ` · ${c.version}` : ''}</span> : <>Not found: <span className="mono">{c.command.split(' ')[0]}</span> – install it or set the full path in Agents &amp; CLIs.</>}>
+              {c.signin && <span className={`chip ${/^Signed in/.test(c.signin) ? 'ok' : ''}`}>{c.signin}</span>}
+              {ok(!!c.path)}
+            </Row>
+          ))}
+        </Group>
+      )}
+      {r && (
+        <Group title="Tools">
+          {r.tools.map((t) => (
+            <Row key={t.bin} label={t.bin} hint={<span>{t.why}{t.path ? <> · <span className="mono">{t.path}</span></> : ' · not installed (optional)'}</span>}>
+              {ok(!!t.path)}
+            </Row>
+          ))}
+        </Group>
+      )}
     </>
   )
 }

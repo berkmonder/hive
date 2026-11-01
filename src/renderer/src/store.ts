@@ -1,3 +1,4 @@
+import { speak } from './speech'
 import { create } from 'zustand'
 import { DEFAULT_SETTINGS, type AgentRuntime, type AppState, type Conflict, type PlanReview, type ServerRuntime, type TeamEvent, type TestResult } from '@shared/types'
 
@@ -194,6 +195,13 @@ export const useStore = create<Store>((set, get) => ({
     })
     window.api.onRuntime((rt) => {
       const prev = get().runtimes[rt.agentId]?.status
+      const ra = get().app.settings.readAloud ?? 'off'
+      if (prev === 'working' && (rt.status === 'waiting' || rt.status === 'done') && ra !== 'off' && (ra === 'all' || get().focusedAgentId === rt.agentId)) {
+        window.api.conversation(rt.agentId).then((c) => {
+          const last = [...(c?.items ?? [])].reverse().find((i) => i.kind === 'assistant')
+          if (last) speak(last.text)
+        }).catch(() => undefined)
+      }
       const looking = get().view === 'focus' && get().focusedAgentId === rt.agentId && document.hasFocus()
       const finished = prev === 'working' && (rt.status === 'waiting' || rt.status === 'done' || rt.status === 'error')
       set({

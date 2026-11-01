@@ -194,6 +194,13 @@ function TaskEditor({ task, agents, onClose, onSave }: { task: Task; agents: Age
               {agents.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.role}</option>)}
             </select>
           </label>
+          <label style={{ flex: 1 }}>Thinking
+            <select value={t.effort ?? ''} onChange={(e) => setT({ ...t, effort: (e.target.value || undefined) as Task['effort'] })}>
+              <option value="">Default</option>
+              <option value="medium">Think hard</option>
+              <option value="high">Ultrathink</option>
+            </select>
+          </label>
           <label style={{ flex: 1 }}>Column
             <select value={t.status} onChange={(e) => setT({ ...t, status: e.target.value as TaskStatus })}>
               {COLS.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

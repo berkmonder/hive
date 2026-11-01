@@ -38,10 +38,26 @@ export function accountEnv(agent: Agent): Record<string, string> {
 }
 const claudeHome = (a?: Account): string => (a ? accountDir(a) : process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'))
 const codexHome = (a?: Account): string => (a ? accountDir(a) : process.env.CODEX_HOME || join(homedir(), '.codex'))
+function signinStatus(providerId: string, acc?: Account): string {
+  if (providerId === 'claude') {
+    const dir = claudeHome(acc)
+    const cfg = [join(dir, '.credentials.json'), join(dir, '.claude.json'), join(homedir(), '.claude.json')].find(existsSync)
+    try {
+      const j = cfg ? JSON.parse(readFileSync(cfg, 'utf8')) : null
+      const email = j?.oauthAccount?.emailAddress
+      return email ? `Signed in as ${email}` : existsSync(join(dir, '.credentials.json')) ? 'Signed in' : 'Not signed in (or uses the macOS keychain)'
+    } catch {
+      return 'Unknown'
+    }
+  }
+  if (providerId === 'codex') return existsSync(join(codexHome(acc), 'auth.json')) ? 'Signed in' : 'Not signed in'
+  return existsSync(join(homedir(), '.gemini', 'oauth_creds.json')) || existsSync(join(homedir(), '.gemini', 'google_accounts.json')) ? 'Signed in' : 'Not signed in'
+}
 
 const LOGIN: Record<string, string> = { claude: 'claude', codex: 'codex login', gemini: 'gemini' }
 
 // ---------------- usage-limit detection ----------------
+const APPROACH_RE = /approaching (?:\w+ )?(?:usage )?limit|(?:8|9)\d% of your (?:\w+ )?limit/i
 const LIMIT_RE = /usage limit (reached|exceeded)|you['’]ve hit your usage limit|5-hour limit reached|weekly limit reached|rate limit exceeded.*(retry|try again) (later|in)|quota exceeded|RESOURCE_EXHAUSTED/i
 
 export function registerMore(ctx: FeatureCtx): { onData: (agentId: string, data: string) => void; recordRunning: () => void; restore: () => void } {
@@ -75,21 +91,58 @@ export function registerMore(ctx: FeatureCtx): { onData: (agentId: string, data:
     setTimeout(() => ctx.servers.start(srv, homedir(), env), 300)
     return id
   })
-  ipcMain.handle('accounts:status', async (_e, providerId: string, accountId?: string) => {
-    const acc = getState().settings.accounts.find((a) => a.id === accountId)
-    if (providerId === 'claude') {
-      const dir = claudeHome(acc)
-      const cfg = [join(dir, '.credentials.json'), join(dir, '.claude.json'), join(homedir(), '.claude.json')].find(existsSync)
-      try {
-        const j = cfg ? JSON.parse(readFileSync(cfg, 'utf8')) : null
-        const email = j?.oauthAccount?.emailAddress
-        return email ? `Signed in as ${email}` : existsSync(join(dir, '.credentials.json')) ? 'Signed in' : 'Not signed in (or uses the macOS keychain)'
-      } catch {
-        return 'Unknown'
-      }
+  ipcMain.handle('accounts:status', async (_e, providerId: string, accountId?: string) =>
+    signinStatus(providerId, getState().settings.accounts.find((a) => a.id === accountId))
+  )
+
+  // ---------- CLI doctor ----------
+  const HINTS: [RegExp, string][] = [
+    [/command not found|not recognized as|No such file or directory/i, 'The CLI is not on the PATH of your login shell. Install it, or put the full path in Settings → Agents & CLIs → Command.'],
+    [/EACCES|permission denied/i, 'Permission problem – check the file permissions of the CLI or the project folder.'],
+    [/not logged in|please log ?in|unauthori[sz]ed|401|invalid api key|authentication/i, 'Not signed in – use Sign in in Settings → Agents & CLIs.'],
+    [/usage limit|rate limit|quota|429/i, 'The account hit its usage limit – wait for the reset or add another account (auto switch).'],
+    [/Unsupported engine|requires node|node: bad option|SyntaxError: Unexpected token/i, 'Your Node.js is too old for this CLI – update Node (e.g. nvm install --lts).'],
+    [/ENOTFOUND|ECONNREFUSED|ETIMEDOUT|network|proxy/i, 'Network problem – check your connection, VPN or proxy settings.'],
+    [/Folder not found/i, 'The project folder (or worktree) is gone – re-add the project or turn off worktree isolation.'],
+    [/mcp_servers|missing field `command`|unknown field `url`/i, 'This Codex version does not accept the MCP servers Hive passes – update Codex, or turn off “MCP servers for Codex” in Settings → Agents & CLIs.'],
+    [/unknown option|unexpected argument|error: unrecognized/i, 'The CLI does not know one of the flags Hive passes – update the CLI (model / effort / --add-dir need recent versions).']
+  ]
+  const which = async (bin: string): Promise<string | null> => {
+    try {
+      return (await shellRun(`command -v ${bin}`, undefined, 15_000)).trim().split('\n').pop() || null
+    } catch {
+      return null
     }
-    if (providerId === 'codex') return existsSync(join(codexHome(acc), 'auth.json')) ? 'Signed in' : 'Not signed in'
-    return existsSync(join(homedir(), '.gemini', 'oauth_creds.json')) || existsSync(join(homedir(), '.gemini', 'google_accounts.json')) ? 'Signed in' : 'Not signed in'
+  }
+  const version = async (cmd: string): Promise<string> => {
+    try {
+      return (await shellRun(`${cmd} --version 2>&1 | head -1`, undefined, 15_000)).replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').replace(/[\x00-\x1f]/g, '').trim().slice(0, 80)
+    } catch {
+      return ''
+    }
+  }
+  ipcMain.handle('doctor:run', async () => {
+    const st = getState()
+    const clis = await Promise.all(
+      st.providers.filter((p) => p.command.trim()).map(async (p) => {
+        const bin = p.command.trim().split(/\s+/)[0]
+        const path = await which(bin)
+        const ver = path ? await version(bin) : ''
+        const signin = path && ['claude', 'codex', 'gemini'].includes(p.id) ? signinStatus(p.id) : ''
+        return { id: p.id, name: p.name, command: p.command, path, version: ver, signin }
+      })
+    )
+    const TOOLS: [string, string][] = [['git', 'Worktrees, diffs and commits'], ['node', 'Needed by most agent CLIs'], ['gh', 'GitHub issues, repo list and clone'], ['glab', 'GitLab repo list'], ['cloudflared', 'Public preview / webhook tunnels'], ['ssh', 'Remote agents'], ['psql', 'PostgreSQL connections'], ['mysql', 'MySQL connections'], ['mongosh', 'MongoDB connections']]
+    const tools = await Promise.all(TOOLS.map(async ([bin, why]) => ({ bin, why, path: await which(bin) })))
+    const failures = st.agents
+      .map((a) => ({ a, rt: ctx.agents.runtime(a.id) }))
+      .filter(({ rt }) => rt.status === 'error' || (!rt.running && rt.exitReason))
+      .map(({ a, rt }) => {
+        const screen = ctx.agents.screenLines(a.id, 40).join('\n')
+        const text = `${rt.exitReason ?? ''}\n${screen}`
+        return { agentId: a.id, name: a.name, reason: rt.exitReason ?? '', tail: screen.trim().split('\n').slice(-6).join('\n'), hints: HINTS.filter(([re]) => re.test(text)).map(([, h]) => h) }
+      })
+    return { clis, tools, failures, shell: process.env.SHELL || '/bin/zsh' }
   })
 
   // ---------- auto switch on usage limits ----------
@@ -150,6 +203,34 @@ export function registerMore(ctx: FeatureCtx): { onData: (agentId: string, data:
         ctx.startAgent(agentId, false, `[Taking over from another AI because of a usage limit]\nTask: ${task.slice(0, 3000)}\n\nLast progress report:\n${recap.slice(0, 3000)}\n\nCheck the current state of the files and continue.`)
       )
     }
+  }
+
+  // ---------- continue when the usage window resets ----------
+  const lastApproach = new Map<string, number>()
+  const resumeTimers = new Map<string, NodeJS.Timeout>()
+  function scheduleResume(agentId: string, text: string): void {
+    if (getState().settings.resumeOnReset === false) return
+    const m = text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').match(/resets?\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i)
+    if (!m) return
+    let h = Number(m[1]) % 24
+    const min = Number(m[2] ?? 0)
+    if (m[3]?.toLowerCase() === 'pm' && h < 12) h += 12
+    if (m[3]?.toLowerCase() === 'am' && h === 12) h = 0
+    const at = new Date()
+    at.setHours(h, min, 0, 0)
+    if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1)
+    const a0 = getState().agents.find((x) => x.id === agentId)
+    const key = `${a0?.providerId}:${a0?.accountId ?? ''}`
+    clearTimeout(resumeTimers.get(agentId))
+    resumeTimers.set(agentId, setTimeout(() => {
+      resumeTimers.delete(agentId)
+      const a = getState().agents.find((x) => x.id === agentId)
+      // only if it is still the same CLI/account (an automatic switch already took over otherwise)
+      if (!a || `${a.providerId}:${a.accountId ?? ''}` !== key || !ctx.agents.isRunning(agentId)) return
+      ctx.agents.deliver(agentId, 'The usage limit has reset – continue where you left off.')
+      notify(`▶️ ${a.name} continues`, 'The usage window reset; queued messages go out now.', agentId)
+    }, at.getTime() - Date.now() + 60_000))
+    ctx.send('toast', `⏰ Will continue automatically at ${at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} when the limit resets`)
   }
 
   // ---------- Figma ----------
@@ -391,11 +472,21 @@ export function registerMore(ctx: FeatureCtx): { onData: (agentId: string, data:
 
   return {
     onData(agentId, data) {
+      if (APPROACH_RE.test(data)) {
+        const now = Date.now()
+        if (now - (lastApproach.get(agentId) ?? 0) > 2 * 3600_000) {
+          lastApproach.set(agentId, now)
+          const a = getState().agents.find((x) => x.id === agentId)
+          notify(`⚠️ ${a?.name ?? 'Agent'}: approaching the usage limit`, 'Plan the rest of the work – or add another account in Settings → Agents & CLIs.', agentId)
+          ctx.send('toast', `⚠️ ${a?.name ?? 'Agent'} is approaching its usage limit`)
+        }
+      }
       if (!LIMIT_RE.test(data)) return
       const now = Date.now()
       if (now - (lastLimit.get(agentId) ?? 0) < 120_000) return
       lastLimit.set(agentId, now)
       ctx.send('agent:limit', agentId)
+      scheduleResume(agentId, data)
       if (getState().settings.autoSwitch) setTimeout(() => switchAccount(agentId).catch((e) => console.warn('[switch]', e)), 1500)
     },
     recordRunning,

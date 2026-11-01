@@ -19,7 +19,7 @@ import { registerRemote } from './remote'
 import { findSessions } from './otherclis'
 import { accountEnv, registerMore } from './more'
 import { utf8Locale } from './agents'
-import { childrenOf, handleMcpHttp, initTeam, mcpArgsFor, wouldCycle } from './team'
+import { childrenOf, handleMcpHttp, initTeam, mcpArgsFor, codexMcpArgs, wouldCycle } from './team'
 import { Agent, AgentPatch, AgentRuntime, AppSettings, DevServer, Provider, NewAgentInput, Project, RoleDef, SavedPrompt } from '@shared/types'
 
 let win: BrowserWindow | null = null
@@ -471,7 +471,7 @@ function startAgent(id: string, resume: boolean, prompt?: string, forkArgs?: str
   const provider = getState().providers.find((p) => p.id === agent.providerId) ?? getState().providers[0]
   const cwd = agentCwd(agent)
   if (!agent.ssh && !existsSync(cwd)) throw new Error(`Folder not found: ${cwd}`)
-  let extraArgs = provider.id === 'claude' ? mcpArgsFor(agent, getHookPort(), !!agent.ssh) : undefined
+  let extraArgs = provider.id === 'claude' ? mcpArgsFor(agent, getHookPort(), !!agent.ssh) : provider.id === 'codex' && !agent.ssh && getState().settings.codexMcp !== false ? codexMcpArgs(agent, getHookPort()) : undefined
   // role instructions travel with every Claude Code session
   const role = getState().roles.find((r) => r.name.toLowerCase() === agent.role.toLowerCase())
   if (provider.id === 'claude' && role?.instructions.trim()) {

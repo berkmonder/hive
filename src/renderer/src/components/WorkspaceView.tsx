@@ -133,7 +133,7 @@ function McpServers() {
     <div className="ws-pane">
       <div className="ws-intro">
         <h2><Icon name="plug" size={16} /> Shared MCP servers</h2>
-        <p className="muted small">Define once – every Claude Code agent gets them at start (on top of your own ~/.claude config). Restart running agents to pick up changes.</p>
+        <p className="muted small">Define once – every Claude Code and Codex agent gets them at start (on top of your own config). Restart running agents to pick up changes.</p>
       </div>
       <div className="cli-list">
         {list.map((m, i) => (

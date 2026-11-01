@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { fillPrompt, type RoleDef, type SavedPrompt } from '@shared/library'
+import { expandRefs, fillPrompt, type RoleDef, type SavedPrompt } from '@shared/library'
 import type { Agent } from '@shared/types'
 import { useStore } from '../store'
 import { Icon, cleanError } from './common'
@@ -8,8 +8,9 @@ const uid = (p: string): string => `${p}-${Math.random().toString(36).slice(2, 9
 
 /** Fill {{agent}} {{role}} {{branch}} {{project}} for one agent. */
 export function promptFor(body: string, agent: Agent): string {
-  const project = useStore.getState().app.projects.find((p) => p.id === agent.projectId)
-  return fillPrompt(body, { agent: agent.name, role: agent.role, branch: agent.branch ?? 'the current branch', project: project?.name })
+  const st = useStore.getState().app
+  const project = st.projects.find((p) => p.id === agent.projectId)
+  return fillPrompt(expandRefs(body, st.prompts, st.skills), { agent: agent.name, role: agent.role, branch: agent.branch ?? 'the current branch', project: project?.name })
 }
 
 /** Send a saved prompt to one or more agents (starts stopped ones). */
@@ -69,7 +70,7 @@ export function PromptPicker({ onPick, onClose, title, style }: {
           ))}
           {list.length === 0 && <li className="muted">No prompts match</li>}
         </ul>
-        <div className="picker-foot muted small">⏎ insert · ⌘⏎ send · variables: {'{{agent}} {{role}} {{branch}} {{project}}'}</div>
+        <div className="picker-foot muted small">⏎ insert · ⌘⏎ send · variables: {'{{agent}} {{role}} {{branch}} {{project}} · {{prompt:Title}} {{skill:name}}'}</div>
       </div>
     </div>
   )
@@ -130,7 +131,7 @@ function PromptsEditor({ items, toast }: { items: SavedPrompt[]; toast: (t: stri
           <label>Title<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></label>
           <label>Prompt
             <textarea rows={12} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-              placeholder="What should the agent do? You can use {{agent}}, {{role}}, {{branch}}, {{project}}." />
+              placeholder="What should the agent do? You can use {{agent}}, {{role}}, {{branch}}, {{project}} – and {{prompt:Other title}} or {{skill:name}} to reuse shared text." />
           </label>
           <div className="modal-foot">
             <button className="btn ghost danger-text" onClick={async () => {

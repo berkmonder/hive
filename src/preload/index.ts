@@ -230,6 +230,12 @@ const api = {
       ipcRenderer.invoke('skills:export', target, projectId),
     import: (projectId?: string): Promise<number> => ipcRenderer.invoke('skills:importFiles', projectId)
   },
+  doctor: (): Promise<{
+    clis: { id: string; name: string; command: string; path: string | null; version: string; signin: string }[]
+    tools: { bin: string; why: string; path: string | null }[]
+    failures: { agentId: string; name: string; reason: string; tail: string; hints: string[] }[]
+    shell: string
+  }> => ipcRenderer.invoke('doctor:run'),
   advisor: (projectId: string, task: string): Promise<{ agentId: string; reason: string }> => ipcRenderer.invoke('advisor:suggest', projectId, task),
   questions: {
     list: (): Promise<AgentQuestion[]> => ipcRenderer.invoke('questions:list'),
@@ -239,6 +245,7 @@ const api = {
   },
   onLimit: (cb: (agentId: string) => void) => on('agent:limit', cb),
   onToast: (cb: (text: string) => void) => on('toast', cb),
+  onPauseSummary: (cb: (s: { agentId: string; name: string; text: string }[]) => void) => on('pause:summary', cb),
 
   onData: (cb: (p: { agentId: string; data: string }) => void) => on('agent:data', cb),
   onRuntime: (cb: (rt: AgentRuntime) => void) => on('agent:runtime', cb),

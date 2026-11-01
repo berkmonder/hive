@@ -107,6 +107,8 @@ export interface Task {
   body: string
   status: TaskStatus
   agentId?: string
+  /** how hard the agent should think about this card (Claude Code: think hard / ultrathink) */
+  effort?: 'low' | 'medium' | 'high'
   /** imported from a tracker (read-only link) */
   source?: { kind: 'github' | 'linear' | 'jira' | 'notion' | 'azure'; number?: number; key?: string; url: string; labels?: string[] }
   createdAt: number
@@ -322,6 +324,12 @@ export interface AppSettings {
   restoreSession: boolean
   /** language agents should answer in ('' = whatever you write) */
   agentLanguage: string
+  /** after a usage limit, continue automatically when the window resets */
+  resumeOnReset?: boolean
+  /** pass Hive's and the shared MCP servers to Codex agents (-c mcp_servers…) */
+  codexMcp?: boolean
+  /** read an agent's reply aloud when its turn ends */
+  readAloud?: 'off' | 'focused' | 'all'
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
