@@ -13,6 +13,8 @@ export function EditAgentModal() {
   const [providerId, setProviderId] = useState(agent?.providerId ?? 'claude')
   const [prompt, setPrompt] = useState(agent?.initialPrompt ?? '')
   const [useWorktree, setUseWorktree] = useState(!!agent?.worktreePath)
+  const [sshHost, setSshHost] = useState(agent?.ssh?.host ?? '')
+  const [sshPath, setSshPath] = useState(agent?.ssh?.path ?? '')
   const [branch, setBranch] = useState(agent?.branch ?? '')
   const [isRepo, setIsRepo] = useState(false)
   const [parentId, setParentId] = useState(agent?.parentId ?? '')
@@ -45,7 +47,8 @@ export function EditAgentModal() {
       const res = await window.api.updateAgent(agent.id, {
         parentId,
         name: name.trim() || agent.name, role, color, providerId, initialPrompt: prompt.trim(),
-        useWorktree, branch: useWorktree ? branch.trim() || undefined : undefined
+        useWorktree, branch: useWorktree ? branch.trim() || undefined : undefined,
+        ssh: sshHost.trim() ? { host: sshHost.trim(), path: sshPath.trim() } : agent.ssh ? null : undefined
       })
       toast('Saved', 'success')
       if (res?.restartHint?.length) toast(`Restart ${res.restartHint.join(', ')} so the team tools are picked up`, 'info')
@@ -122,6 +125,11 @@ export function EditAgentModal() {
             <small className="muted">{agent.branch ? 'Renaming keeps all commits; works even while the agent runs.' : 'Leave empty for an automatic name. An existing branch is reused.'}</small>
           </label>
         )}
+
+        <div className="row">
+          <label style={{ flex: 1 }}>SSH host (optional)<input className="mono" value={sshHost} onChange={(e) => setSshHost(e.target.value)} placeholder="user@server – empty = run locally" /></label>
+          <label style={{ flex: 1 }}>Folder on the server<input className="mono" value={sshPath} disabled={!sshHost.trim()} onChange={(e) => setSshPath(e.target.value)} placeholder="~/apps/my-api" /></label>
+        </div>
 
         {error && <p className="error">{error}</p>}
         <p className="muted small" style={{ margin: 0 }}>CLI and first-task changes apply the next time the agent starts.</p>

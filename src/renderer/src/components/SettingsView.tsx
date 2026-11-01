@@ -148,6 +148,12 @@ function Appearance() {
         </div>
       </Group>
       <Group title="Layout">
+        <Row label="Language" hint="Terminals, code and agent replies are not translated.">
+          <Choice value={L.lang} options={[['en', 'English'], ['tr', 'Türkçe']]} onChange={(v) => {
+            L.set({ lang: v })
+            if (v === 'en') setTimeout(() => location.reload(), 50)
+          }} />
+        </Row>
         <Row label="Interface size" hint="Zooms the whole window (⌘+ / ⌘− work too).">
           <Choice value={L.uiScale} options={[[0.9, '90%'], [1, '100%'], [1.1, '110%'], [1.2, '120%']]} onChange={(v) => L.set({ uiScale: v })} />
         </Row>

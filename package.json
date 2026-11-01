@@ -21,11 +21,15 @@
   },
   "dependencies": {
     "@xterm/headless": "^6.0.0",
+    "mongodb": "^7.8.0",
+    "mysql2": "^3.24.6",
     "node-pty": "^1.1.0",
+    "pg": "^8.23.1",
     "simple-git": "^3.27.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.0",
@@ -61,7 +65,12 @@
     ],
     "mac": {
       "target": [
-        "dmg"
+        {
+          "target": "dmg"
+        },
+        {
+          "target": "zip"
+        }
       ],
       "category": "public.app-category.developer-tools",
       "identity": null,
@@ -73,13 +82,41 @@
     },
     "win": {
       "target": [
-        "nsis"
-      ]
+        {
+          "target": "nsis"
+        }
+      ],
+      "icon": "build/icon.png"
     },
     "linux": {
       "target": [
         "AppImage"
-      ]
-    }
-  }
+      ],
+      "category": "Development",
+      "icon": "build/icon.png"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "burakilk",
+        "repo": "hive",
+        "releaseType": "release"
+      }
+    ],
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-${version}-windows-setup.${ext}"
+    },
+    "releaseInfo": {
+      "releaseNotesFile": "build/release-notes.md"
+    },
+    "afterPack": "scripts/adhoc-sign.cjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/burakilk/hive.git"
+  },
+  "homepage": "https://github.com/burakilk/hive"
 }

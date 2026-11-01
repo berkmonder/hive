@@ -3,7 +3,7 @@ import type { UsageReport } from '@shared/usage'
 import type { Conversation } from '@shared/chat'
 import type { ProcInfo } from '@shared/procs'
 import type { ReplayTurn, WeeklyReport } from '@shared/insights'
-import type { AgentRuntime, AppState, GitSummary, NewAgentInput, Agent, AgentPatch, Project, TeamEvent, RoleDef, SavedPrompt, DevServer, ServerRuntime, AppSettings, Provider, Task, TaskStatus, Schedule, Skill, McpServerDef, ProjectSettings, TestResult, Workflow, WorkflowRun, PlanReview, Conflict, Trigger, PickedElement } from '@shared/types'
+import type { AgentRuntime, AppState, GitSummary, NewAgentInput, Agent, AgentPatch, Project, TeamEvent, RoleDef, SavedPrompt, DevServer, ServerRuntime, AppSettings, Provider, Task, TaskStatus, Schedule, Skill, McpServerDef, ProjectSettings, TestResult, Workflow, WorkflowRun, PlanReview, Conflict, Trigger, PickedElement, DbConnection } from '@shared/types'
 
 function on<T>(channel: string, cb: (payload: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, payload: T): void => cb(payload)
@@ -159,6 +159,17 @@ const api = {
     encrypted: (): Promise<boolean> => ipcRenderer.invoke('secrets:encrypted')
   },
   onEmote: (cb: (e: { agentIds: string[]; kind: string }) => void) => on('agent:emote', cb),
+  tunnel: {
+    open: (port: number): Promise<{ url: string; tool: string }> => ipcRenderer.invoke('tunnel:open', port),
+    close: (port: number): Promise<void> => ipcRenderer.invoke('tunnel:close', port),
+    list: (): Promise<{ port: number; url: string; tool: string }[]> => ipcRenderer.invoke('tunnel:list')
+  },
+  db: {
+    list: (): Promise<DbConnection[]> => ipcRenderer.invoke('db:list'),
+    save: (d: DbConnection, url?: string): Promise<void> => ipcRenderer.invoke('db:save', d, url),
+    remove: (id: string): Promise<void> => ipcRenderer.invoke('db:remove', id),
+    query: (id: string, q: string): Promise<string> => ipcRenderer.invoke('db:query', id, q)
+  },
   onAwake: (cb: (on: boolean) => void) => on('power:awake', cb),
   onProjectPaused: (cb: (projectId: string) => void) => on('project:paused', cb),
 

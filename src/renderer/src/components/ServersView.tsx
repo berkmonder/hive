@@ -195,6 +195,31 @@ function Preview({ url, running, projectPath }: { url?: string; running: boolean
   }
   const width = DEVICES[device].w
   const [picking, setPicking] = useState(false)
+  const [share, setShare] = useState<{ url?: string; busy?: boolean } | null>(null)
+  const port = (() => {
+    try {
+      return Number(new URL(src).port) || (src.startsWith('https') ? 443 : 80)
+    } catch {
+      return 0
+    }
+  })()
+  const toggleShare = async (): Promise<void> => {
+    if (share?.url) {
+      await window.api.tunnel.close(port)
+      setShare(null)
+      return
+    }
+    setShare({ busy: true })
+    try {
+      const r = await window.api.tunnel.open(port)
+      setShare({ url: r.url })
+      await window.api.copyText(r.url)
+      useStore.getState().toast(`Public URL copied (${r.tool}) – anyone with the link can open it`, 'success')
+    } catch (e) {
+      setShare(null)
+      useStore.getState().toast(cleanError(e), 'error')
+    }
+  }
   const [picked, setPicked] = useState<PickedElement | null>(null)
   const pick = async (): Promise<void> => {
     if (picking) {
@@ -227,6 +252,10 @@ function Preview({ url, running, projectPath }: { url?: string; running: boolean
         <label className="pv-auto" title="Reload the preview when project files change">
           <input type="checkbox" checked={L.previewAutoReload} onChange={(e) => L.set({ previewAutoReload: e.target.checked })} /> Auto-reload
         </label>
+        <button className={`btn ${share?.url ? '' : 'ghost'} sm`} disabled={!src || !port || share?.busy} title="Share on a public HTTPS URL (Cloudflare quick tunnel, or localtunnel)" onClick={toggleShare}>
+          <Icon name="external" size={13} /> {share?.busy ? 'Opening…' : share?.url ? 'Stop sharing' : 'Share'}
+        </button>
+        {share?.url && <button className="chip share-url mono" title="Copy" onClick={() => window.api.copyText(share.url!)}>{share.url.replace('https://', '')}</button>}
         <button className={`btn ${picking ? '' : 'ghost'} sm`} disabled={!src} title="Click an element in the preview to send it to an agent (Esc cancels)" onClick={pick}>
           <Icon name="target" size={13} /> {picking ? 'Click an element… (Esc)' : 'Pick element'}
         </button>

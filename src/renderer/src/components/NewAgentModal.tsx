@@ -20,6 +20,9 @@ export function NewAgentModal() {
   const [prompt, setPrompt] = useState('')
   const [isRepo, setIsRepo] = useState(false)
   const [useWorktree, setUseWorktree] = useState(false)
+  const [remote, setRemote] = useState(false)
+  const [sshHost, setSshHost] = useState('')
+  const [sshPath, setSshPath] = useState('')
   const [branch, setBranch] = useState('')
   const [parentId, setParentId] = useState(newAgentParentId ?? '')
   const leadOptions = app.agents.filter((a) => a.projectId === selectedProjectId)
@@ -40,7 +43,8 @@ export function NewAgentModal() {
     try {
       const agent = await window.api.createAgent({
         projectId: project.id, name, role, color, providerId,
-        initialPrompt: prompt.trim() || undefined, useWorktree, branch: useWorktree ? branch.trim() || undefined : undefined, parentId: parentId || undefined
+        initialPrompt: prompt.trim() || undefined, useWorktree: useWorktree && !remote, branch: useWorktree && !remote ? branch.trim() || undefined : undefined, parentId: parentId || undefined,
+        ssh: remote && sshHost.trim() ? { host: sshHost.trim(), path: sshPath.trim() } : undefined
       })
       close()
       focusAgent(agent.id)
@@ -112,7 +116,21 @@ export function NewAgentModal() {
           </span>
         </label>
 
-        {useWorktree && (
+        <label className="check">
+          <input type="checkbox" checked={remote} onChange={(e) => setRemote(e.target.checked)} />
+          <span>
+            Run on a server over SSH
+            <small>The CLI runs on the remote machine (it must be installed and logged in there). Uses your ~/.ssh config and keys.</small>
+          </span>
+        </label>
+        {remote && (
+          <div className="row">
+            <label style={{ flex: 1 }}>Host<input className="mono" value={sshHost} onChange={(e) => setSshHost(e.target.value)} placeholder="user@server or ssh-config alias" /></label>
+            <label style={{ flex: 1 }}>Folder on the server<input className="mono" value={sshPath} onChange={(e) => setSshPath(e.target.value)} placeholder="~/apps/my-api" /></label>
+          </div>
+        )}
+
+        {useWorktree && !remote && (
           <label>Branch name
             <input className="mono" value={branch} onChange={(e) => setBranch(e.target.value)} placeholder={`hive/${slug(name)}`} />
           </label>

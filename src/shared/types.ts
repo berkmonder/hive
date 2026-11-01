@@ -60,6 +60,8 @@ export interface Agent {
   workMs?: number
   /** role changes made while the agent was running (morphing) */
   roleLog?: { from: string; to: string; at: number }[]
+  /** run the CLI on another machine over SSH */
+  ssh?: { host: string; path: string }
   /** stopped by "Pause project" – resume picks the conversation back up */
   paused?: boolean
   /** agent this one was forked from */
@@ -330,6 +332,7 @@ export interface NewAgentInput {
   /** custom branch name when useWorktree is on (default hive/<name>) */
   branch?: string
   parentId?: string
+  ssh?: { host: string; path: string }
 }
 
 export interface AgentPatch {
@@ -344,6 +347,8 @@ export interface AgentPatch {
   branch?: string
   /** lead agent id, or '' to detach */
   parentId?: string
+  /** null = run locally again */
+  ssh?: { host: string; path: string } | null
 }
 
 export interface TeamEvent {
@@ -370,4 +375,16 @@ export interface PickedElement {
   url: string
   size: string
   style: string
+}
+
+/** Database an agent can query (connection string is stored encrypted, never shown to agents) */
+export interface DbConnection {
+  id: string
+  name: string
+  type: 'postgres' | 'mysql' | 'mongodb'
+  /** undefined = available in every project */
+  projectId?: string
+  readOnly: boolean
+  /** host:port shown in the UI */
+  host?: string
 }

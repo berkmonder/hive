@@ -33,9 +33,10 @@ export interface Layout {
   focusMode: 'terminal' | 'chat'
   splitIds: string[]
   splitDir: 'cols' | 'rows'
+  lang: 'en' | 'tr'
 }
 
-const DEFAULTS: Layout = { sidebarW: 300, changesW: 460, filesH: 190, filesW: 280, diffMode: 'unified', wrap: false, diffFont: 12.5, explorerW: 260, keymap: 'vscode', autoSave: 'afterDelay', autoSaveDelay: 1000, mdMode: 'split', roomMode: 'office', serversW: 280, previewAutoReload: false, uiScale: 1, termFont: 'Menlo', termFontSize: 13, termCursor: 'block', termBlink: true, termScrollback: 5000, editorFont: 'JetBrains Mono', editorFontSize: 13, editorMinimap: true, editorWrap: false, editorLigatures: true, editorTabSize: 2, reduceMotion: false, focusMode: 'terminal', splitIds: [], splitDir: 'cols' }
+const DEFAULTS: Layout = { sidebarW: 300, changesW: 460, filesH: 190, filesW: 280, diffMode: 'unified', wrap: false, diffFont: 12.5, explorerW: 260, keymap: 'vscode', autoSave: 'afterDelay', autoSaveDelay: 1000, mdMode: 'split', roomMode: 'office', serversW: 280, previewAutoReload: false, uiScale: 1, termFont: 'Menlo', termFontSize: 13, termCursor: 'block', termBlink: true, termScrollback: 5000, editorFont: 'JetBrains Mono', editorFontSize: 13, editorMinimap: true, editorWrap: false, editorLigatures: true, editorTabSize: 2, reduceMotion: false, focusMode: 'terminal', splitIds: [], splitDir: 'cols', lang: 'en' }
 const KEY = 'hive.layout'
 
 function load(): Layout {

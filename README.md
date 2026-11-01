@@ -101,6 +101,7 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Supported CLIs:** Claude Code, Codex CLI, Gemini CLI, plain shell – add any other CLI in *Settings → Agents & CLIs* (with a PATH check).
 - **Git worktree isolation:** each agent works in `../.hive-worktrees/<project>/<agent>` on branch `hive/<agent>`.
 - **Precise status for Claude Code** via hooks (working / needs you / done); other CLIs use output-silence detection.
+- **Remote agents over SSH:** run the CLI on a server (`user@host` + folder); hooks and Hive's MCP tools travel back through an SSH reverse tunnel.
 - **Resume** the last conversation, **restart**, **interrupt**, **duplicate**, **pause after this turn** – from the right-click menu anywhere.
 - **Teams:** set *Reports to*; Claude leads get MCP tools to delegate, wait for and read reports from their team.
 - **Fork** a Claude conversation into a new agent (own branch), **change role** mid-session (PM → Dev → QA) or **ask a side question** to a read-only copy without interrupting.
@@ -137,17 +138,20 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Project memory** shared by all Claude agents (they can add to it with `remember`).
 - **Skills:** reusable procedures agents fetch with `get_skill` (or you insert from ⌘K).
 - **Shared MCP servers:** define once, every Claude agent gets them.
+- **Databases:** PostgreSQL, MySQL, MongoDB – agents query with `db_list` / `db_query`, one statement per call, read-only by default (read-only transactions), credentials encrypted and never shown to the agent.
 - **Secrets:** API keys stored with the system keychain, given to agents as environment variables, masked (••••••) in every terminal view; Claude agents see only the names (`list_secrets`).
 
 ### Built-in tools
 - **Code editor** (Monaco): explorer with git colours, tabs, quick open, IntelliSense with auto-import, markdown preview, auto save, VS Code / JetBrains keymaps, *Open in IDE* (VS Code, Cursor, JetBrains IDEs, Zed…).
 - **Dev servers** with detected commands and a **live preview** (device widths, auto-reload).
+- **Share** a dev server – or the webhook port – on a public HTTPS URL (Cloudflare quick tunnel via `cloudflared`, falls back to localtunnel).
 - **Usage & cost:** tokens and estimated cost per agent and per day from Claude Code's session logs.
 - **Weekly report** (Usage → Weekly report): commits, lines, finished cards and cost per agent for 7 / 14 / 30 days – copy as Markdown.
 - **Session replay** (right-click → Session replay): step through a session turn by turn and see which tool calls filled the context window.
 
 ### Make it yours
 - The office reacts: agents go for a coffee while their tests run, celebrate a merge with confetti, facepalm on red tests and show a 💡 when a plan is ready.
+- **English or Türkçe** interface (Settings → Appearance → Language).
 - Themes (Dark, Midnight, Light, System), six accent colours, interface size, fonts, cursor, keymap, notifications – all in **Settings** (⌘,).
 
 ## Keyboard shortcuts
@@ -202,8 +206,8 @@ src/
 
 - [x] Sketch on screenshots · pick elements in the preview · idea radar · webhook triggers · commit context
 - [x] Weekly report · session replay · secrets manager · office animations
-- [ ] Database connections · SSH agents · localhost tunnel
-- [ ] Turkish UI · richer Codex / Gemini integration (usage, conversation view)
+- [x] Database connections · SSH agents · localhost tunnel · Turkish UI
+- [ ] Richer Codex / Gemini integration (usage, conversation view)
 - [ ] Mobile companion
 
 ## Contributing

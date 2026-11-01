@@ -17,6 +17,7 @@ import { Palette } from './components/Palette'
 import { AskBubble, MorphMenu } from './components/AgentExtras'
 import { PlanReviewModal } from './components/PlanReview'
 import { ReplayModal } from './components/Insights'
+import { setLanguage } from './i18n'
 import { LibraryModal, SendPromptPicker } from './components/Library'
 import { ContextMenu } from './components/ContextMenu'
 import { Toasts } from './components/Toasts'
@@ -40,6 +41,9 @@ export default function App() {
   useEffect(() => {
     window.api.settings.setZoom(L.uiScale)
   }, [L.uiScale])
+  useEffect(() => {
+    if (ready) setLanguage(L.lang)
+  }, [L.lang, ready])
   useEffect(() => {
     document.documentElement.dataset.motion = L.reduceMotion ? 'reduce' : 'full'
   }, [L.reduceMotion])

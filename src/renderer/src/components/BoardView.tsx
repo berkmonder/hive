@@ -532,11 +532,31 @@ function Triggers() {
   const agents = app.agents.filter((a) => a.projectId === selectedProjectId)
   const list = app.triggers.filter((t) => agents.some((a) => a.id === t.agentId))
   const [port, setPort] = useState(4317)
+  const [pub, setPub] = useState<string | null>(null)
+  const [pubBusy, setPubBusy] = useState(false)
+  useEffect(() => {
+    window.api.tunnel.list().then((l) => setPub(l.find((x) => x.port === port)?.url ?? null))
+  }, [port])
+  const togglePublic = async (): Promise<void> => {
+    if (pub) {
+      await window.api.tunnel.close(port)
+      setPub(null)
+      return
+    }
+    setPubBusy(true)
+    try {
+      setPub((await window.api.tunnel.open(port)).url)
+    } catch (e) {
+      toast(cleanError(e), 'error')
+    } finally {
+      setPubBusy(false)
+    }
+  }
   const [edit, setEdit] = useState<Trigger | null>(null)
   useEffect(() => {
     window.api.extras.triggerPort().then(setPort)
   }, [app.triggers.length])
-  const url = (t: Trigger): string => `http://127.0.0.1:${port}/trigger/${t.id}?token=${t.token}`
+  const url = (t: Trigger): string => `${pub ?? `http://127.0.0.1:${port}`}/trigger/${t.id}?token=${t.token}`
   const copy = (s: string): void => {
     window.api.copyText(s).then(() => toast('Copied', 'success'))
   }
@@ -545,6 +565,9 @@ function Triggers() {
       <div className="bv-bar">
         <p className="muted small">A URL that starts or messages an agent when something POSTs to it – CI, a script, a cron job, or GitHub / Slack through a tunnel (ngrok, cloudflared).</p>
         <div className="spacer" />
+        <button className={`btn ${pub ? '' : 'ghost'} sm`} disabled={pubBusy} title="Expose the webhook port on a public HTTPS URL so GitHub / Slack can reach it" onClick={togglePublic}>
+          <Icon name="external" size={12} /> {pubBusy ? 'Opening…' : pub ? 'Public ✓ (stop)' : 'Make public'}
+        </button>
         <button className="btn sm" disabled={!agents.length} onClick={() => setEdit({ id: newId(), name: 'CI failed', agentId: agents[0]?.id ?? '', prompt: 'The CI build failed. Find out why and fix it.\n\nPayload:\n{{payload}}', token: '', enabled: true })}>
           <Icon name="plus" size={13} /> New webhook
         </button>

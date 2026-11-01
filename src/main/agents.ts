@@ -9,6 +9,7 @@
 import * as pty from 'node-pty'
 import { Agent, AgentRuntime, AgentStatus, Provider, QueuedMessage } from '@shared/types'
 import { randomUUID } from 'crypto'
+import { homedir } from 'os'
 import type { HookEvent } from './hooks'
 import { exitReason, pickActivity } from '@shared/text'
 import { Terminal as Screen } from '@xterm/headless'
@@ -59,7 +60,7 @@ export class AgentManager {
 
   constructor(
     private events: AgentManagerEvents,
-    private env: { hookPort: number; claudeSettingsFile: string | null }
+    private env: { hookPort: number; claudeSettingsFile: string | null; claudeSettingsJson?: () => string }
   ) {
     this.timer = setInterval(() => this.tick(), 1000)
   }
@@ -97,12 +98,14 @@ export class AgentManager {
     this.redact = values
   }
 
-  start(agent: Agent, provider: Provider, cwd: string, opts: { resume?: boolean; prompt?: string; extraArgs?: string; env?: Record<string, string> } = {}): void {
+  start(agent: Agent, provider: Provider, cwd: string, opts: { resume?: boolean; prompt?: string; extraArgs?: string; env?: Record<string, string>; ssh?: { host: string; path: string } } = {}): void {
     if (this.sessions.has(agent.id)) return
 
     const isWin = process.platform === 'win32'
     let cmd = provider.command.trim()
-    if (cmd && provider.id === 'claude' && this.env.claudeSettingsFile)
+    if (cmd && provider.id === 'claude' && opts.ssh && this.env.claudeSettingsJson?.())
+      cmd += ` --settings ${quote(this.env.claudeSettingsJson(), false)}` // the file only exists here
+    else if (cmd && provider.id === 'claude' && this.env.claudeSettingsFile)
       cmd += ` --settings ${quote(this.env.claudeSettingsFile, false)}`
     if (cmd && opts.extraArgs) cmd += ` ${opts.extraArgs}`
     if (cmd && opts.resume && provider.resumeArgs) cmd += ` ${provider.resumeArgs}`
@@ -111,6 +114,14 @@ export class AgentManager {
     if (cmd && pendingPrompt && provider.promptArg !== undefined) {
       cmd += ` ${provider.promptArg ? provider.promptArg + ' ' : ''}${quote(pendingPrompt, isWin)}`
       pendingPrompt = undefined
+    }
+
+    // remote agent: run over SSH; -R forwards the hook / MCP port back to Hive
+    if (opts.ssh) {
+      const p = this.env.hookPort
+      const remote = `cd ${quote(opts.ssh.path || '.', false)} && HIVE_PORT=${p} HIVE_AGENT_ID=${agent.id} HIVE_AGENT_NAME=${quote(agent.name, false)} exec "$SHELL" -lic ${quote(cmd || 'exec "$SHELL" -l', false)}`
+      cmd = `ssh -tt -o ServerAliveInterval=30 -o ExitOnForwardFailure=no -R ${p}:127.0.0.1:${p} ${quote(opts.ssh.host, false)} ${quote(remote, false)}`
+      cwd = homedir()
     }
 
     let file: string

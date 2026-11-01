@@ -5,7 +5,7 @@ import { cpSync, existsSync } from 'fs'
 import { execFile } from 'child_process'
 import { AgentManager } from './agents'
 import { getState, loadState, mergeProviders, updateState } from './store'
-import { getHookPort, startHookServer, stopHookServer, writeClaudeHookSettings } from './hooks'
+import { claudeHookSettingsJson, getHookPort, startHookServer, stopHookServer, writeClaudeHookSettings } from './hooks'
 import * as git from './git'
 import * as files from './files'
 import { listIdes, openInIde } from './ide'
@@ -15,6 +15,7 @@ import { registerFeatures } from './features'
 import { registerAutomation } from './automation'
 import { registerExtras } from './extras'
 import { registerInsights, secretEnv, secretValues } from './insights'
+import { registerRemote } from './remote'
 import { utf8Locale } from './agents'
 import { childrenOf, handleMcpHttp, initTeam, mcpArgsFor, wouldCycle } from './team'
 import { Agent, AgentPatch, AgentRuntime, AppSettings, DevServer, Provider, NewAgentInput, Project, RoleDef, SavedPrompt } from '@shared/types'
@@ -182,9 +183,10 @@ function registerIpc(): void {
       providerId: input.providerId,
       initialPrompt: input.initialPrompt,
       parentId: input.parentId || undefined,
+      ssh: input.ssh?.host.trim() ? { host: input.ssh.host.trim(), path: input.ssh.path.trim() } : undefined,
       createdAt: Date.now()
     }
-    if (input.useWorktree) Object.assign(agent, await git.createWorktree(project.path, agent.name, agent.id, input.branch))
+    if (input.useWorktree && !agent.ssh) Object.assign(agent, await git.createWorktree(project.path, agent.name, agent.id, input.branch))
     updateState((s) => s.agents.push(agent))
     broadcastState()
     startAgent(agent.id, false)
@@ -229,6 +231,7 @@ function registerIpc(): void {
       next.branch = branch
     }
 
+    if (patch.ssh !== undefined) (next as Partial<Agent> & { ssh?: Agent['ssh'] }).ssh = patch.ssh?.host.trim() ? { host: patch.ssh.host.trim(), path: patch.ssh.path.trim() } : undefined
     let restartHint: string[] = []
     if (patch.parentId !== undefined && (patch.parentId || undefined) !== agent.parentId) {
       const pid = patch.parentId || undefined
@@ -247,6 +250,7 @@ function registerIpc(): void {
       const a = s.agents.find((x) => x.id === id)!
       Object.assign(a, next)
       if ('parentId' in next && !next.parentId) delete a.parentId
+      if ('ssh' in next && !next.ssh) delete a.ssh
       if ('worktreePath' in next && !next.worktreePath) {
         delete a.worktreePath
         delete a.branch
@@ -443,8 +447,8 @@ function startAgent(id: string, resume: boolean, prompt?: string, forkArgs?: str
   const agent = findAgent(id)
   const provider = getState().providers.find((p) => p.id === agent.providerId) ?? getState().providers[0]
   const cwd = agentCwd(agent)
-  if (!existsSync(cwd)) throw new Error(`Folder not found: ${cwd}`)
-  let extraArgs = provider.id === 'claude' ? mcpArgsFor(agent, getHookPort()) : undefined
+  if (!agent.ssh && !existsSync(cwd)) throw new Error(`Folder not found: ${cwd}`)
+  let extraArgs = provider.id === 'claude' ? mcpArgsFor(agent, getHookPort(), !!agent.ssh) : undefined
   // role instructions travel with every Claude Code session
   const role = getState().roles.find((r) => r.name.toLowerCase() === agent.role.toLowerCase())
   if (provider.id === 'claude' && role?.instructions.trim()) {
@@ -453,7 +457,7 @@ function startAgent(id: string, resume: boolean, prompt?: string, forkArgs?: str
   }
   if (forkArgs) extraArgs = `${extraArgs ?? ''} ${forkArgs}`.trim()
   if (agent.paused) updateState((s) => s.agents.forEach((a) => a.id === id && delete a.paused))
-  agents.start(agent, provider, cwd, { resume, prompt, extraArgs, env: secretEnv(agent.projectId) })
+  agents.start(agent, provider, cwd, { resume, prompt, extraArgs, env: secretEnv(agent.projectId), ssh: agent.ssh })
 }
 
 async function removeAgent(agent: Agent, project: Project): Promise<void> {
@@ -507,7 +511,7 @@ app.whenReady().then(async () => {
         }
       }
     },
-    { hookPort: port || getHookPort(), claudeSettingsFile: writeClaudeHookSettings() }
+    { hookPort: port || getHookPort(), claudeSettingsFile: writeClaudeHookSettings(), claudeSettingsJson: claudeHookSettingsJson }
   )
   servers = new ServerManager({
     onData: (serverId, data) => send('server:data', { serverId, data }),
@@ -527,6 +531,8 @@ app.whenReady().then(async () => {
   features = registerFeatures(fctx)
   automation = registerAutomation(fctx)
   extras = registerExtras(fctx)
+  const remote = registerRemote(fctx)
+  app.on('before-quit', () => remote.dispose())
   registerInsights(fctx).onSecretsChanged(() => agents.setRedactions(secretValues()))
   agents.setRedactions(secretValues())
   createWindow()

@@ -179,7 +179,9 @@ export function ChangesPanel({ agent, onClose, mode = 'side', onMode }: {
           </button>
         )}
       </div>
-      {!data ? (
+      {agent.ssh ? (
+        <p className="muted small pad">{agent.name} runs on <b>{agent.ssh.host}</b> – its files and changes live on that server. Ask the agent to commit there, or check them over SSH.</p>
+      ) : !data ? (
         <p className="muted small pad">Loading…</p>
       ) : !data.isRepo ? (
         <p className="muted small pad">This folder is not a git repository.</p>

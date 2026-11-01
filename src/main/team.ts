@@ -18,6 +18,7 @@ import { lastLines, pickActivity } from '@shared/text'
 import type { AgentManager } from './agents'
 import { getState } from './store'
 import { secretNames } from './insights'
+import { dbsFor, runQuery } from './remote'
 
 export interface TeamDeps {
   agents: AgentManager
@@ -64,13 +65,13 @@ const lines = (s?: string): [string, string][] =>
 const splitArgs = (s?: string): string[] => (s?.match(/'[^']*'|"[^"]*"|\S+/g) ?? []).map((a) => a.replace(/^['"]|['"]$/g, ''))
 
 /** Does this agent get Hive's own MCP server (team tools, project memory, skills)? */
-const wantsHive = (a: Agent): boolean => inTeam(a) || getState().settings.memoryMode !== 'off' || getState().skills.length > 0
+const wantsHive = (a: Agent): boolean => inTeam(a) || getState().settings.memoryMode !== 'off' || getState().skills.length > 0 || dbsFor(a.projectId).length > 0
 
 /**
  * Writes the per-agent MCP config file and returns CLI args for Claude Code:
  * Hive's server (team, memory, skills) + every shared MCP server from Settings.
  */
-export function mcpArgsFor(agent: Agent, port: number): string | undefined {
+export function mcpArgsFor(agent: Agent, port: number, inline = false): string | undefined {
   const servers: Record<string, object> = {}
   if (wantsHive(agent))
     servers.hive = { type: 'http', url: `http://127.0.0.1:${port}/mcp/${agent.id}`, headers: { Authorization: `Bearer ${TOKEN}` } }
@@ -84,6 +85,7 @@ export function mcpArgsFor(agent: Agent, port: number): string | undefined {
   mkdirSync(dir, { recursive: true })
   const file = join(dir, `${agent.id}.json`)
   const config = { mcpServers: servers }
+  if (inline) return `--mcp-config '${JSON.stringify(config).replace(/'/g, `'\\''`)}'`
   writeFileSync(file, JSON.stringify(config, null, 2))
   return `--mcp-config '${file.replace(/'/g, `'\\''`)}'`
 }
@@ -262,6 +264,24 @@ function toolsFor(me: Agent): object[] {
       description: 'Add one short note to the shared project memory (a decision, convention, architecture fact or pitfall). Other agents will see it.',
       inputSchema: { type: 'object', properties: { note: { type: 'string' } }, required: ['note'] }
     })
+  if (dbsFor(me.projectId).length)
+    tools.push(
+      {
+        name: 'db_list',
+        description: 'List the databases you can query (name, type, read-only or not). Credentials are never shown.',
+        inputSchema: { type: 'object', properties: {} }
+      },
+      {
+        name: 'db_query',
+        description:
+          'Run ONE statement on a database. SQL for postgres / mysql; for mongodb a JSON object like {"collection":"users","find":{"active":true},"limit":20}, {"collection":"orders","aggregate":[...]}, {"collection":"x","count":{}} or {"collections":true}. Read-only connections reject writes.',
+        inputSchema: {
+          type: 'object',
+          properties: { database: { type: 'string', description: 'Name from db_list' }, query: { type: 'string' }, limit: { type: 'number', description: 'Max rows, default 100' } },
+          required: ['database', 'query']
+        }
+      }
+    )
   if (secretNames(me.projectId).length)
     tools.push({
       name: 'list_secrets',
@@ -403,6 +423,14 @@ async function callTool(me: Agent, name: string, args: Record<string, unknown>):
       deps.remember(me.projectId, `- ${note} _(${me.name}, ${new Date().toISOString().slice(0, 10)})_`)
       return 'Saved to project memory.'
     }
+
+    case 'db_list': {
+      const l = dbsFor(me.projectId)
+      return l.length ? l.map((d) => `- ${d.name} (${d.type}${d.readOnly ? ', read-only' : ', read-write'})`).join('\n') : 'No databases connected.'
+    }
+
+    case 'db_query':
+      return runQuery(me.projectId, String(args.database ?? ''), String(args.query ?? ''), Math.min(Number(args.limit) || 100, 500))
 
     case 'list_secrets': {
       const n = secretNames(me.projectId)

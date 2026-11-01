@@ -62,6 +62,10 @@ export function stopHookServer(): void {
   server = null
 }
 
+let settingsJson = ''
+/** The same settings as an inline JSON string (for agents on other machines). */
+export const claudeHookSettingsJson = (): string => settingsJson
+
 /** Writes the Claude Code settings file that wires hooks to this server. */
 export function writeClaudeHookSettings(): string | null {
   if (process.platform === 'win32') return null // env-var syntax differs; idle detection is used instead
@@ -80,6 +84,7 @@ export function writeClaudeHookSettings(): string | null {
       SessionStart: hook('SessionStart')
     }
   }
+  settingsJson = JSON.stringify(settings)
   const file = join(app.getPath('userData'), 'claude-hooks.json')
   writeFileSync(file, JSON.stringify(settings, null, 2))
   return file
