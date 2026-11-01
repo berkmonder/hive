@@ -21,7 +21,7 @@ export function FocusView() {
   const L = useLayout()
   const base = useRef(0)
   const agent = app.agents.find((a) => a.id === focusedAgentId)
-  const conv = useConversation(focusedAgentId ?? '', !!agent && agent.providerId === 'claude')
+  const conv = useConversation(focusedAgentId ?? '', !!agent && ['claude', 'codex', 'gemini'].includes(agent.providerId))
   if (!agent) return null
   const rt = runtimes[agent.id]
   const status = rt?.status ?? 'idle'
@@ -49,7 +49,7 @@ export function FocusView() {
               <span className="chip">{provider?.name ?? agent.providerId}</span>
             </div>
           </div>
-          {agent.providerId === 'claude' && (
+          {['claude', 'codex', 'gemini'].includes(agent.providerId) && (
             <div className="seg sm view-toggle">
               <button className={L.focusMode === 'terminal' ? 'on' : ''} title="Terminal" onClick={() => L.set({ focusMode: 'terminal' })}><Icon name="terminal" size={13} /></button>
               <button className={L.focusMode === 'chat' ? 'on' : ''} title="Conversation view" onClick={() => L.set({ focusMode: 'chat' })}><Icon name="message" size={13} /></button>
@@ -73,7 +73,7 @@ export function FocusView() {
         <TeamStrip agentId={agent.id} />
         <AgentSignals agentId={agent.id} />
         <div className="term-wrap">
-          {rt && agent.providerId === 'claude' && L.focusMode === 'chat' ? (
+          {rt && ['claude', 'codex', 'gemini'].includes(agent.providerId) && L.focusMode === 'chat' ? (
             <ChatView agentId={agent.id} conv={conv} />
           ) : rt ? (
             <Terminal key={agent.id} agentId={agent.id} autoFocus />

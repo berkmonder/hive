@@ -172,6 +172,11 @@ export const useStore = create<Store>((set, get) => ({
       set({ pendingShots: [...get().pendingShots, shot] })
       get().toast('Screenshot attached to your next message', 'success')
     })
+    window.api.onToast((text) => get().toast(text, 'success'))
+    window.api.onLimit((id) => {
+      const a = get().app.agents.find((x) => x.id === id)
+      get().toast(`${a?.name ?? 'Agent'} hit its usage limit${get().app.settings.autoSwitch ? ' – switching account / CLI…' : ''}`, 'error')
+    })
     window.api.onProjectPaused((pid) => {
       const p = get().app.projects.find((x) => x.id === pid)
       get().toast(`${p?.name ?? 'Project'} paused – safe to close`, 'success')

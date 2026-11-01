@@ -13,7 +13,7 @@ const html = (s: string): string => DOMPurify.sanitize(md.parse(s, { async: fals
 export function useConversation(agentId: string, enabled: boolean, everyMs = 2500): (Conversation & { none?: boolean }) | null {
   const [conv, setConv] = useState<(Conversation & { none?: boolean }) | null>(null)
   const status = useStore((s) => s.runtimes[agentId]?.status)
-  const isClaude = useStore((s) => s.app.agents.find((a) => a.id === agentId)?.providerId === 'claude')
+  const isClaude = useStore((s) => ['claude', 'codex', 'gemini'].includes(s.app.agents.find((a) => a.id === agentId)?.providerId ?? ''))
   useEffect(() => {
     if (!enabled || !isClaude) return
     let alive = true
@@ -56,8 +56,8 @@ export function ChatView({ agentId, conv }: { agentId: string; conv: (Conversati
     if (stick.current) end.current?.scrollIntoView({ block: 'end' })
   }, [items.length])
 
-  if (agent?.providerId !== 'claude')
-    return <div className="chat-empty muted">The conversation view reads Claude Code sessions. Use the terminal for {agent?.name}.</div>
+  if (!agent || !['claude', 'codex', 'gemini'].includes(agent.providerId))
+    return <div className="chat-empty muted">The conversation view reads Claude Code, Codex and Gemini sessions. Use the terminal for {agent?.name ?? 'this agent'}.</div>
   if (!conv) return <div className="chat-empty muted">Loading conversation…</div>
   if (conv.none || !items.length)
     return <div className="chat-empty muted">No conversation yet – it appears here once {agent.name} gets its first message.</div>

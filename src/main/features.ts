@@ -32,7 +32,7 @@ export interface FeatureCtx {
   agentCwd: (a: Agent) => string
 }
 
-const fill = (tpl: string, t: Task): string => tpl.replace(/\{\{title\}\}/g, t.title).replace(/\{\{body\}\}/g, t.body || '(no details)')
+export const fill = (tpl: string, t: Task): string => tpl.replace(/\{\{title\}\}/g, t.title).replace(/\{\{body\}\}/g, t.body || '(no details)')
 const sessionIdOf = (a: Agent): string | undefined => {
   const t = a.sessions?.[a.sessions.length - 1]
   return t ? basename(t, '.jsonl') : undefined
@@ -51,7 +51,7 @@ function notify(ctx: FeatureCtx, title: string, body: string, agentId?: string):
 }
 
 /** Give a task to an agent: typed in / queued if running, otherwise started with it. */
-function handTo(ctx: FeatureCtx, agentId: string, text: string, fresh = false): string {
+export function handTo(ctx: FeatureCtx, agentId: string, text: string, fresh = false): string {
   if (fresh && ctx.agents.isRunning(agentId)) {
     ctx.agents.restart(agentId, () => ctx.startAgent(agentId, false, text))
     return 'restarted'

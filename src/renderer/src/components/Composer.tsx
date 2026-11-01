@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PromptPicker, promptFor, sendPrompt } from './Library'
+import { FigmaButton } from './More'
 import { useStore } from '../store'
 import { Recorder } from '../dictation'
 import { Icon, cleanError } from './common'
@@ -219,6 +220,7 @@ export function Composer({ agentId, compact }: { agentId: string; compact?: bool
         <button className="icon-btn" title="Attach a screenshot (⌘⇧2 works anywhere) – or paste / drop an image" onClick={screenshot}>
           <Icon name="camera" size={15} />
         </button>
+        <FigmaButton />
         <button className={`icon-btn mic ${rec}`} title={rec === 'rec' ? 'Stop & transcribe' : 'Dictate'} onClick={mic}
           style={rec === 'rec' ? { ['--lvl' as string]: level } : undefined}>
           <Icon name={rec === 'busy' ? 'refresh' : 'mic'} size={15} />

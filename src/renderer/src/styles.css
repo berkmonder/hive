@@ -1251,3 +1251,29 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .db-opt.on svg { color: var(--done); }
 .db-opt.on.warn { border-color: var(--working); background: color-mix(in srgb, var(--working) 8%, var(--panel-2)); }
 .db-opt.on.warn svg { color: var(--working); }
+
+/* ---------- sign-in, accounts, clone, questions ---------- */
+.signin-modal { width: 760px; }
+.signin-term { height: 360px; position: relative; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg); }
+.signin-term > .terminal { position: absolute; inset: 6px; }
+.chip.ok { color: #22c55e; border-color: color-mix(in srgb, #22c55e 45%, transparent); }
+.acc-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.acc-row { display: flex; align-items: center; gap: 8px; }
+.acc-row input { width: 200px; }
+.advisor { display: inline-flex; gap: 6px; align-items: baseline; margin-left: 8px; font-weight: 400; }
+.skill-files { flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.clone-modal { width: 620px; }
+.repo-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow: auto; }
+.repo-item { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; text-align: left; background: none; border: 1px solid transparent; border-radius: 8px; padding: 7px 10px; color: var(--text); cursor: pointer; }
+.repo-item:hover { border-color: var(--border); background: var(--panel-2, rgba(255,255,255,.03)); }
+.repo-item .muted { grid-column: 2; }
+.question-modal { width: 620px; }
+.q-block { display: flex; flex-direction: column; gap: 8px; }
+.q-block p { margin: 0; }
+.q-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.q-opt { display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: none; color: var(--text); cursor: pointer; }
+.q-opt small { color: var(--muted); font-size: 11px; }
+.q-opt:hover { border-color: var(--accent); }
+.q-opt.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.bv-bar select, .skill-files select { width: auto; flex: 0 0 auto; }
+.q-block .chip { align-self: flex-start; }

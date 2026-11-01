@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import type { Agent, AgentStatus } from '@shared/types'
 import { useStore } from '../store'
+import { CloneRepoModal } from './More'
 import { Character } from './Character'
 import { Icon, STATUS_LABEL, timeAgo } from './common'
 import { agentCommands } from './agentCommands'
@@ -17,6 +18,7 @@ export function Sidebar() {
   const { app, runtimes, selectedProjectId, selectProject, focusedAgentId, view, setShowNewAgent, groupBy, setGroupBy } = useStore()
   const [query, setQuery] = useState('')
   const [projOpen, setProjOpen] = useState(false)
+  const [cloning, setCloning] = useState(false)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const project = app.projects.find((p) => p.id === selectedProjectId)
   const agents = app.agents.filter(
@@ -27,6 +29,7 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
+      {cloning && <CloneRepoModal onClose={() => setCloning(false)} />}
       {/* project switcher */}
       <div className="card">
         <div className="card-title">Project</div>
@@ -46,6 +49,9 @@ export function Sidebar() {
             ))}
             <button className="add" onClick={() => { window.api.addProject(); setProjOpen(false) }}>
               <Icon name="plus" /> Add folder…
+            </button>
+            <button className="add" onClick={() => { setCloning(true); setProjOpen(false) }}>
+              <Icon name="github" /> Clone from Git…
             </button>
           </div>
         )}

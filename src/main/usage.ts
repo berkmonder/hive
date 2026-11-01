@@ -12,6 +12,7 @@ import { join } from 'path'
 import type { Agent } from '@shared/types'
 
 import type { AgentUsage, Tokens, UsageEntry, UsageReport } from '@shared/usage'
+import { kindOf, readOther } from './otherclis'
 export type { UsageReport } from '@shared/usage'
 
 // USD per million tokens: [input, output, cache write (5m), cache read]
@@ -36,6 +37,7 @@ const dayOf = (iso?: string): string => {
 const cache = new Map<string, { size: number; mtime: number; entries: UsageEntry[] }>()
 
 async function parseTranscript(path: string): Promise<UsageEntry[]> {
+  if (kindOf(path) !== 'claude') return readOther(path).usage as UsageEntry[]
   let st
   try {
     st = statSync(path)

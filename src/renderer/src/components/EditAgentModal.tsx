@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AgentAccountFields } from './More'
 import { useStore } from '../store'
 import { Icon, cleanError } from './common'
 import { Character } from './Character'
@@ -18,6 +19,7 @@ export function EditAgentModal() {
   const [branch, setBranch] = useState(agent?.branch ?? '')
   const [isRepo, setIsRepo] = useState(false)
   const [parentId, setParentId] = useState(agent?.parentId ?? '')
+  const [acc, setAcc] = useState<{ accountId?: string; effort?: string }>({ accountId: agent?.accountId, effort: agent?.effort })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   useEffect(() => {
@@ -48,7 +50,9 @@ export function EditAgentModal() {
         parentId,
         name: name.trim() || agent.name, role, color, providerId, initialPrompt: prompt.trim(),
         useWorktree, branch: useWorktree ? branch.trim() || undefined : undefined,
-        ssh: sshHost.trim() ? { host: sshHost.trim(), path: sshPath.trim() } : agent.ssh ? null : undefined
+        ssh: sshHost.trim() ? { host: sshHost.trim(), path: sshPath.trim() } : agent.ssh ? null : undefined,
+        accountId: acc.accountId === undefined ? null : acc.accountId,
+        effort: acc.effort ?? ''
       })
       toast('Saved', 'success')
       if (res?.restartHint?.length) toast(`Restart ${res.restartHint.join(', ')} so the team tools are picked up`, 'info')
@@ -92,6 +96,7 @@ export function EditAgentModal() {
             {app.providers.map((p) => <option key={p.id} value={p.id}>{p.name}{p.command ? ` (${p.command})` : ''}</option>)}
           </select>
         </label>
+        <AgentAccountFields providerId={providerId} accountId={acc.accountId} effort={acc.effort} onChange={(p) => setAcc({ ...acc, ...p })} />
         <label>First task for new sessions (optional)
           <textarea rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
         </label>

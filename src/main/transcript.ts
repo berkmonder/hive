@@ -5,6 +5,7 @@
 import { statSync } from 'fs'
 import { open } from 'fs/promises'
 import type { ChatItem, Conversation } from '@shared/chat'
+import { kindOf, readOther } from './otherclis'
 
 const cache = new Map<string, { size: number; mtime: number; conv: Conversation }>()
 
@@ -24,6 +25,7 @@ function toolSummary(name: string, input: Record<string, unknown> = {}): string 
 }
 
 export async function readConversation(path: string, limit = 400): Promise<Conversation> {
+  if (kindOf(path) !== 'claude') return readOther(path).conv
   let st
   try {
     st = statSync(path)

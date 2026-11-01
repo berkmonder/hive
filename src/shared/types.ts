@@ -14,6 +14,10 @@ export interface Provider {
    * e.g. '-i' = flag. Undefined = type it into the terminal once the CLI is idle.
    */
   promptArg?: string
+  /** default reasoning effort for new sessions ('' = the CLI's own default) */
+  effort?: '' | 'low' | 'medium' | 'high'
+  /** default model ('' = the CLI's own default) */
+  model?: string
 }
 
 export const DEFAULT_PROVIDERS: Provider[] = [
@@ -60,6 +64,10 @@ export interface Agent {
   workMs?: number
   /** role changes made while the agent was running (morphing) */
   roleLog?: { from: string; to: string; at: number }[]
+  /** sign-in used by this agent (undefined = project default, then your normal login) */
+  accountId?: string
+  /** overrides the CLI's default reasoning effort */
+  effort?: '' | 'low' | 'medium' | 'high'
   /** run the CLI on another machine over SSH */
   ssh?: { host: string; path: string }
   /** stopped by "Pause project" – resume picks the conversation back up */
@@ -97,8 +105,8 @@ export interface Task {
   body: string
   status: TaskStatus
   agentId?: string
-  /** imported from GitHub Issues (read-only link) */
-  source?: { kind: 'github'; number: number; url: string; labels?: string[] }
+  /** imported from a tracker (read-only link) */
+  source?: { kind: 'github' | 'linear' | 'jira' | 'notion' | 'azure'; number?: number; key?: string; url: string; labels?: string[] }
   createdAt: number
   updatedAt: number
 }
@@ -166,6 +174,8 @@ export interface AppState {
   workflowRuns: WorkflowRun[]
   ideas: Idea[]
   triggers: Trigger[]
+  /** what was running when Hive quit (session restore) */
+  lastRunning?: { agents: string[]; servers: string[]; at: number }
 }
 
 /** A theme found by the idea radar in raw user feedback */
@@ -201,6 +211,19 @@ export interface ProjectSettings {
   testRetries?: number
   /** daily spend limit in USD (estimated, Claude Code agents) – agents pause when reached */
   dailyBudget?: number
+  /** idle agents take the next Todo card by themselves */
+  autoPick?: 'off' | 'assigned' | 'any'
+  /** default sign-in per CLI for this project (provider id -> account id) */
+  accounts?: Record<string, string>
+}
+
+/** An extra sign-in for a CLI (its own config folder: CLAUDE_CONFIG_DIR / CODEX_HOME) */
+export interface Account {
+  id: string
+  providerId: 'claude' | 'codex'
+  name: string
+  /** empty = Hive keeps it in its data folder */
+  configDir?: string
 }
 
 export interface TestResult {
@@ -277,6 +300,16 @@ export interface AppSettings {
   triggerPort: number
   /** attach the agent's conversation to commits made in Hive (git notes, ref "hive") */
   commitContext: boolean
+  /** extra sign-ins (multi-account) */
+  accounts: Account[]
+  /** on a usage limit: continue on the next account of the same CLI */
+  autoSwitch: boolean
+  /** …or, when there is none, hand the task to this CLI ('' = off) */
+  fallbackProvider: string
+  /** restart the agents and dev servers that were running when Hive quit */
+  restoreSession: boolean
+  /** language agents should answer in ('' = whatever you write) */
+  agentLanguage: string
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -293,7 +326,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   whisperCmd: '',
   queueWhenBusy: true,
   triggerPort: 4317,
-  commitContext: true
+  commitContext: true,
+  accounts: [],
+  autoSwitch: true,
+  fallbackProvider: '',
+  restoreSession: true,
+  agentLanguage: ''
 }
 
 export const DEFAULT_BOARD_PROMPTS: Record<TaskStatus, string> = {
@@ -349,6 +387,10 @@ export interface AgentPatch {
   parentId?: string
   /** null = run locally again */
   ssh?: { host: string; path: string } | null
+  /** account id, '' = main login, null = project default */
+  accountId?: string | null
+  /** '' = CLI default */
+  effort?: string
 }
 
 export interface TeamEvent {
@@ -387,4 +429,11 @@ export interface DbConnection {
   readOnly: boolean
   /** host:port shown in the UI */
   host?: string
+}
+
+/** Claude's AskUserQuestion, shown as clickable options */
+export interface AgentQuestion {
+  agentId: string
+  questions: { question: string; header?: string; multiSelect?: boolean; options?: { label: string; description?: string }[] }[]
+  at: number
 }

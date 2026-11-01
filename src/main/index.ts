@@ -16,6 +16,8 @@ import { registerAutomation } from './automation'
 import { registerExtras } from './extras'
 import { registerInsights, secretEnv, secretValues } from './insights'
 import { registerRemote } from './remote'
+import { findSessions } from './otherclis'
+import { accountEnv, registerMore } from './more'
 import { utf8Locale } from './agents'
 import { childrenOf, handleMcpHttp, initTeam, mcpArgsFor, wouldCycle } from './team'
 import { Agent, AgentPatch, AgentRuntime, AppSettings, DevServer, Provider, NewAgentInput, Project, RoleDef, SavedPrompt } from '@shared/types'
@@ -48,6 +50,7 @@ let servers: ServerManager
 let features: ReturnType<typeof registerFeatures> | null = null
 let automation: ReturnType<typeof registerAutomation> | null = null
 let extras: ReturnType<typeof registerExtras> | null = null
+let more: ReturnType<typeof registerMore> | null = null
 
 function send(channel: string, payload: unknown): void {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
@@ -231,6 +234,8 @@ function registerIpc(): void {
       next.branch = branch
     }
 
+    if (patch.accountId !== undefined) (next as Partial<Agent>).accountId = patch.accountId ?? undefined
+    if (patch.effort !== undefined) (next as Partial<Agent>).effort = (patch.effort || undefined) as Agent['effort']
     if (patch.ssh !== undefined) (next as Partial<Agent> & { ssh?: Agent['ssh'] }).ssh = patch.ssh?.host.trim() ? { host: patch.ssh.host.trim(), path: patch.ssh.path.trim() } : undefined
     let restartHint: string[] = []
     if (patch.parentId !== undefined && (patch.parentId || undefined) !== agent.parentId) {
@@ -455,9 +460,19 @@ function startAgent(id: string, resume: boolean, prompt?: string, forkArgs?: str
     const q = `'${role.instructions.trim().replace(/'/g, `'\\''`)}'`
     extraArgs = `${extraArgs ?? ''} --append-system-prompt ${q}`.trim()
   }
+  // answer language (Claude Code)
+  const lang = getState().settings.agentLanguage
+  if (provider.id === 'claude' && lang) extraArgs = `${extraArgs ?? ''} --append-system-prompt '${`Always write your replies to the user in ${lang}.`.replace(/'/g, `'\\''`)}'`.trim()
+  // model + reasoning effort (agent overrides the CLI default)
+  const effort = agent.effort || provider.effort || ''
+  const model = provider.model?.trim()
+  const env: Record<string, string> = { ...secretEnv(agent.projectId), ...accountEnv(agent) }
+  if (model && !forkArgs) extraArgs = `${extraArgs ?? ''} ${provider.id === 'claude' ? '--model' : '-m'} '${model.replace(/'/g, '')}'`.trim()
+  if (effort && provider.id === 'codex') extraArgs = `${extraArgs ?? ''} -c model_reasoning_effort='"${effort}"'`.trim()
+  if (effort && provider.id === 'claude') env.MAX_THINKING_TOKENS = String({ low: 4000, medium: 16000, high: 31999 }[effort])
   if (forkArgs) extraArgs = `${extraArgs ?? ''} ${forkArgs}`.trim()
   if (agent.paused) updateState((s) => s.agents.forEach((a) => a.id === id && delete a.paused))
-  agents.start(agent, provider, cwd, { resume, prompt, extraArgs, env: secretEnv(agent.projectId), ssh: agent.ssh })
+  agents.start(agent, provider, cwd, { resume, prompt, extraArgs, env, ssh: agent.ssh })
 }
 
 async function removeAgent(agent: Agent, project: Project): Promise<void> {
@@ -494,7 +509,10 @@ app.whenReady().then(async () => {
   }, handleMcpHttp)
   agents = new AgentManager(
     {
-      onData: (agentId, data) => send('agent:data', { agentId, data }),
+      onData: (agentId, data) => {
+        send('agent:data', { agentId, data })
+        more?.onData(agentId, data)
+      },
       onActivity: (agentId, text) => send('agent:activity', { agentId, text }),
       onWorked: (agentId, ms) =>
         updateState((s) => {
@@ -531,6 +549,24 @@ app.whenReady().then(async () => {
   features = registerFeatures(fctx)
   automation = registerAutomation(fctx)
   extras = registerExtras(fctx)
+  // Codex / Gemini have no SessionStart hook: find their session files by folder + start time
+  setInterval(() => {
+    const st = getState()
+    const owned = new Set(st.agents.flatMap((a) => a.sessions ?? []))
+    for (const a of st.agents) {
+      if ((a.providerId !== 'codex' && a.providerId !== 'gemini') || a.ssh || !agents.isRunning(a.id)) continue
+      const since = agents.startedAt(a.id) ?? Date.now()
+      const fresh = findSessions(a.providerId, agentCwd(a), since).filter((p) => !owned.has(p))
+      if (!fresh.length) continue
+      updateState((s) => {
+        const x = s.agents.find((y) => y.id === a.id)
+        if (x) x.sessions = [...(x.sessions ?? []), ...fresh].slice(-200)
+      })
+      fresh.forEach((p) => owned.add(p))
+    }
+  }, 8000)
+  more = registerMore(fctx)
+  setTimeout(() => more?.restore(), 2500)
   const remote = registerRemote(fctx)
   app.on('before-quit', () => remote.dispose())
   registerInsights(fctx).onSecretsChanged(() => agents.setRedactions(secretValues()))
@@ -546,6 +582,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  more?.recordRunning()
   features?.dispose()
   automation?.dispose()
   extras?.dispose()

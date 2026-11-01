@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Agent, Schedule, Task, TaskStatus, Trigger, Workflow } from '@shared/types'
 import { describeSchedule, nextRun } from '@shared/schedule'
+import { AdvisorButton, AutoPickSelect, TrackerImport } from './More'
 import { useStore } from '../store'
 import { Icon, cleanError, timeAgo } from './common'
 import { Character } from './Character'
@@ -51,7 +52,7 @@ function Backlog() {
     () =>
       app.tasks
         .filter((t) => t.projectId === selectedProjectId)
-        .filter((t) => !q || `${t.title} ${t.body} ${t.source?.number ?? ''}`.toLowerCase().includes(q.toLowerCase()))
+        .filter((t) => !q || `${t.title} ${t.body} ${t.source?.number ?? ''} ${t.source?.key ?? ''}`.toLowerCase().includes(q.toLowerCase()))
         .sort((a, b) => b.updatedAt - a.updatedAt),
     [app.tasks, selectedProjectId, q]
   )
@@ -91,6 +92,8 @@ function Backlog() {
       <div className="bv-bar">
         <div className="search-box"><Icon name="search" size={13} /><input placeholder="Filter cards…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         <div className="spacer" />
+        {selectedProjectId && <AutoPickSelect projectId={selectedProjectId} />}
+        {selectedProjectId && <TrackerImport projectId={selectedProjectId} />}
         <button className="btn ghost sm" disabled={importing} onClick={importIssues} title="Read-only: open issues become Todo cards (nothing is written back)">
           <Icon name="github" size={13} /> {importing ? 'Importing…' : 'Import GitHub issues'}
         </button>
@@ -144,7 +147,7 @@ function Card({ t, agents, onOpen, onDrag, onAssign }: { t: Task; agents: Agent[
       {t.body && <div className="kc-body">{t.body.slice(0, 160)}</div>}
       <div className="kc-foot" onClick={(e) => e.stopPropagation()}>
         {t.source && (
-          <a className="chip gh" title="Open on GitHub" onClick={() => window.api.openLink(t.source!.url)}><Icon name="github" size={11} /> #{t.source.number}</a>
+          <a className="chip gh" title="Open on GitHub" onClick={() => window.api.openLink(t.source!.url)}><Icon name={t.source.kind === 'github' ? 'github' : 'external'} size={11} /> {t.source.key ?? `#${t.source.number}`}</a>
         )}
         {t.source?.labels?.slice(0, 2).map((l) => <span key={l} className="chip">{l}</span>)}
         <div className="spacer" />
@@ -180,12 +183,12 @@ function TaskEditor({ task, agents, onClose, onSave }: { task: Task; agents: Age
       <div className="modal task-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2>{exists ? 'Edit card' : 'New card'}</h2>
-          {t.source && <button className="chip gh" onClick={() => window.api.openLink(t.source!.url)}><Icon name="github" size={11} /> #{t.source.number}</button>}
+          {t.source && <button className="chip gh" onClick={() => window.api.openLink(t.source!.url)}><Icon name={t.source.kind === 'github' ? 'github' : 'external'} size={11} /> {t.source.key ?? `#${t.source.number}`}</button>}
         </div>
         <label>Title<input autoFocus value={t.title} onChange={(e) => setT({ ...t, title: e.target.value })} placeholder="What should be done?" /></label>
         <label>Details<textarea rows={8} value={t.body} onChange={(e) => setT({ ...t, body: e.target.value })} placeholder="Context, acceptance criteria, links…" /></label>
         <div className="row">
-          <label style={{ flex: 1 }}>Agent
+          <label style={{ flex: 1 }}>Agent <AdvisorButton projectId={t.projectId} text={`${t.title}\n${t.body}`} onPick={(id) => setT({ ...t, agentId: id })} />
             <select value={t.agentId ?? ''} onChange={(e) => setT({ ...t, agentId: e.target.value || undefined })}>
               <option value="">— not assigned —</option>
               {agents.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.role}</option>)}

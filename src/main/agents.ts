@@ -26,6 +26,8 @@ interface Session {
   activity: string
   runtime: AgentRuntime
   hookDriven: boolean
+  /** CLI id (claude / codex / gemini / …) */
+  providerId: string
   pendingPrompt?: string
   /** messages typed in one by one whenever the agent is free */
   queue: QueuedMessage[]
@@ -107,6 +109,9 @@ export class AgentManager {
       cmd += ` --settings ${quote(this.env.claudeSettingsJson(), false)}` // the file only exists here
     else if (cmd && provider.id === 'claude' && this.env.claudeSettingsFile)
       cmd += ` --settings ${quote(this.env.claudeSettingsFile, false)}`
+    // Codex calls `notify` after every turn – our "Stop" hook
+    if (cmd && provider.id === 'codex')
+      cmd += ` -c ${quote('notify=["bash","-c","curl -s -m 2 -X POST --data-binary \\"$1\\" http://127.0.0.1:$HIVE_PORT/hook/$HIVE_AGENT_ID/Stop >/dev/null 2>&1 || true","hive"]', false)}`
     if (cmd && opts.extraArgs) cmd += ` ${opts.extraArgs}`
     if (cmd && opts.resume && provider.resumeArgs) cmd += ` ${provider.resumeArgs}`
 
@@ -160,6 +165,7 @@ export class AgentManager {
       activityDirty: false,
       activity: '',
       hookDriven: false,
+      providerId: provider.id,
       pendingPrompt,
       queue: [],
       command: cmd,
@@ -283,6 +289,10 @@ export class AgentManager {
     this.emitQueue(s)
   }
 
+  startedAt(agentId: string): number | undefined {
+    return this.sessions.get(agentId)?.startedAt
+  }
+
   pid(agentId: string): number | undefined {
     return this.sessions.get(agentId)?.pty.pid
   }
@@ -358,6 +368,11 @@ export class AgentManager {
     const s = this.sessions.get(agentId)
     if (!s) return
     if (event === 'SessionStart') return
+    // Codex only reports turn ends (notify) – keep reading the screen for "working"
+    if (s.providerId !== 'claude') {
+      if (event === 'Stop' && !s.pendingPrompt) this.setStatus(agentId, 'waiting')
+      return
+    }
     s.hookDriven = true
     if (event === 'Stop' || event === 'Notification') this.setStatus(agentId, 'waiting')
     else this.setStatus(agentId, 'working')
@@ -396,7 +411,13 @@ export class AgentManager {
           this.events.onActivity(id, a)
         }
       }
-      const quiet = now - s.runtime.lastActivity > IDLE_MS
+      // Codex / Gemini show "esc to interrupt / cancel" while they work: read the screen
+      const tuiBusy = s.providerId === 'codex' || s.providerId === 'gemini' ? /esc to (interrupt|cancel)|\(esc to/i.test(this.screenLines(id, 10).join('\n')) : null
+      if (tuiBusy === true && !s.pendingPrompt) {
+        if (s.runtime.status !== 'working') this.setStatus(id, 'working')
+        continue
+      }
+      const quiet = now - s.runtime.lastActivity > (tuiBusy === false ? 1500 : IDLE_MS)
       if (!quiet) continue
       // first quiet moment after start: CLI is ready -> type the initial prompt
       if (s.pendingPrompt) {

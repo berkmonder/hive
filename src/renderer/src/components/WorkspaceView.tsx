@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { DbConnection, McpServerDef, Skill } from '@shared/types'
 import type { ProcInfo } from '@shared/procs'
+import { ProjectAccounts, SkillFilesBar } from './More'
 import { useStore } from '../store'
 import { Icon, cleanError } from './common'
 import { Character } from './Character'
@@ -95,6 +96,7 @@ function Skills() {
     <div className="ws-pane split2">
       <div className="lib-list">
         <button className="btn sm" onClick={add}><Icon name="plus" size={13} /> New skill</button>
+        <SkillFilesBar projectId={useStore.getState().selectedProjectId ?? undefined} />
         {app.skills.map((s) => (
           <button key={s.id} className={`lib-item ${s.id === sel ? 'on' : ''}`} onClick={() => setSel(s.id)}>
             <b><Icon name="zap" size={12} /> {s.name}</b>
@@ -237,6 +239,7 @@ function Automation() {
   const spent = budget[selectedProjectId] ?? 0
   return (
     <div className="ws-pane">
+      <ProjectAccounts projectId={selectedProjectId} />
       <section className="set-group">
         <header>
           <h2>🧪 Test guard</h2>

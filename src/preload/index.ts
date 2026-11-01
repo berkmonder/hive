@@ -3,7 +3,7 @@ import type { UsageReport } from '@shared/usage'
 import type { Conversation } from '@shared/chat'
 import type { ProcInfo } from '@shared/procs'
 import type { ReplayTurn, WeeklyReport } from '@shared/insights'
-import type { AgentRuntime, AppState, GitSummary, NewAgentInput, Agent, AgentPatch, Project, TeamEvent, RoleDef, SavedPrompt, DevServer, ServerRuntime, AppSettings, Provider, Task, TaskStatus, Schedule, Skill, McpServerDef, ProjectSettings, TestResult, Workflow, WorkflowRun, PlanReview, Conflict, Trigger, PickedElement, DbConnection } from '@shared/types'
+import type { AgentRuntime, AppState, GitSummary, NewAgentInput, Agent, AgentPatch, Project, TeamEvent, RoleDef, SavedPrompt, DevServer, ServerRuntime, AppSettings, Provider, Task, TaskStatus, Schedule, Skill, McpServerDef, ProjectSettings, TestResult, Workflow, WorkflowRun, PlanReview, Conflict, Trigger, PickedElement, DbConnection, Account, AgentQuestion } from '@shared/types'
 
 function on<T>(channel: string, cb: (payload: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, payload: T): void => cb(payload)
@@ -205,6 +205,39 @@ const api = {
     openInIde: (id: string, root: string, rel?: string, line?: number): Promise<void> => ipcRenderer.invoke('ide:open', id, root, rel, line),
     onChanged: (cb: (p: { root: string; paths: string[] }) => void) => on('fs:changed', cb)
   },
+
+  accounts: {
+    save: (list: Account[]): Promise<void> => ipcRenderer.invoke('accounts:save', list),
+    /** opens a login terminal (server id returned) */
+    signin: (providerId: string, accountId?: string): Promise<string> => ipcRenderer.invoke('accounts:signin', providerId, accountId),
+    status: (providerId: string, accountId?: string): Promise<string> => ipcRenderer.invoke('accounts:status', providerId, accountId)
+  },
+  figma: {
+    frame: (url: string, projectId?: string): Promise<{ path: string; dataUrl: string; name: string; size: string; texts: string[]; url: string }> =>
+      ipcRenderer.invoke('figma:frame', url, projectId)
+  },
+  tracker: {
+    import: (projectId: string, kind: 'linear' | 'jira' | 'notion' | 'azure', opts: Record<string, string>): Promise<{ added: number; updated: number; total: number }> =>
+      ipcRenderer.invoke('tracker:import', projectId, kind, opts)
+  },
+  repos: {
+    list: (): Promise<{ name: string; url: string; host: 'github' | 'gitlab'; description: string }[]> => ipcRenderer.invoke('repos:list'),
+    clone: (url: string): Promise<Project | null> => ipcRenderer.invoke('repos:clone', url)
+  },
+  skillFiles: {
+    export: (target: 'claude-project' | 'claude-user' | 'codex-user' | 'cursor-project', projectId?: string): Promise<string[]> =>
+      ipcRenderer.invoke('skills:export', target, projectId),
+    import: (projectId?: string): Promise<number> => ipcRenderer.invoke('skills:importFiles', projectId)
+  },
+  advisor: (projectId: string, task: string): Promise<{ agentId: string; reason: string }> => ipcRenderer.invoke('advisor:suggest', projectId, task),
+  questions: {
+    list: (): Promise<AgentQuestion[]> => ipcRenderer.invoke('questions:list'),
+    answer: (agentId: string, picks: number[][], other?: string): Promise<void> => ipcRenderer.invoke('questions:answer', agentId, picks, other),
+    onReady: (cb: (q: AgentQuestion) => void) => on('question:ready', cb),
+    onCleared: (cb: (agentId: string) => void) => on('question:cleared', cb)
+  },
+  onLimit: (cb: (agentId: string) => void) => on('agent:limit', cb),
+  onToast: (cb: (text: string) => void) => on('toast', cb),
 
   onData: (cb: (p: { agentId: string; data: string }) => void) => on('agent:data', cb),
   onRuntime: (cb: (rt: AgentRuntime) => void) => on('agent:runtime', cb),

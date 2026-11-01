@@ -3,6 +3,7 @@ import { DEFAULT_PROVIDERS, type AppSettings, type Provider } from '@shared/type
 import { ACCENTS, THEMES, useStore, type ThemeId } from '../store'
 import { FONTS, LAYOUT_DEFAULTS, fontStack, useLayout, type Layout } from '../layout'
 import { HiveLogo, Icon, cleanError } from './common'
+import { AccountsSettings } from './More'
 
 type Section = 'appearance' | 'terminal' | 'editor' | 'agents' | 'input' | 'notifications' | 'about'
 const SECTIONS: { id: Section; name: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
@@ -315,6 +316,7 @@ function AgentSettings() {
       <Group title="AI commit messages" hint="✨ in the Changes panel writes the message from the real diff with your Claude Code (Haiku).">
         <textarea rows={3} defaultValue={s.commitRules} onBlur={(e) => e.target.value !== s.commitRules && save({ commitRules: e.target.value })} />
       </Group>
+      <AccountsSettings />
       <ProvidersEditor />
     </>
   )

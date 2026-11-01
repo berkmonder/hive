@@ -14,6 +14,8 @@ import type { HookEvent, HookPayload } from './hooks'
 import * as git from './git'
 import { usageReport } from './usage'
 import { readConversation } from './transcript'
+import { fill, handTo } from './features'
+import { runClaude } from './ai'
 
 const dayKey = (d = new Date()): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
@@ -312,6 +314,91 @@ export function registerAutomation(ctx: FeatureCtx): {
     checkBudgets().catch(() => undefined)
   }, 5000)
 
+  // ---------- backlog auto-pick: idle agents take the next Todo card ----------
+  const autoCard = new Map<string, string>() // agentId -> taskId
+  const pickFor = (a: Agent): boolean => {
+    const mode = ps(a.projectId).autoPick ?? 'off'
+    if (mode === 'off' || a.ssh) return false
+    const st = getState()
+    if (st.tasks.some((t) => t.agentId === a.id && t.status === 'doing')) return false
+    const todo = st.tasks.filter((t) => t.projectId === a.projectId && t.status === 'todo').sort((x, y) => x.createdAt - y.createdAt)
+    const t = todo.find((x) => x.agentId === a.id) ?? (mode === 'any' ? todo.find((x) => !x.agentId) : undefined)
+    if (!t) return false
+    save((s) => Object.assign(s.tasks.find((x) => x.id === t.id)!, { agentId: a.id, status: 'doing', updatedAt: Date.now() }))
+    autoCard.set(a.id, t.id)
+    handTo(ctx, a.id, fill(getState().boardPrompts.doing || '{{title}}\n\n{{body}}', t))
+    return true
+  }
+  const t3 = setInterval(() => {
+    for (const id of agents.runningIds()) {
+      const rt = agents.runtime(id)
+      if (rt.status !== 'waiting' || agents.isBusy(id) || rt.queue?.length) continue
+      const a = getState().agents.find((x) => x.id === id)
+      if (a) pickFor(a)
+    }
+  }, 15_000)
+
+  // ---------- advisor: which agent fits a task best ----------
+  ipcMain.handle('advisor:suggest', async (_e, projectId: string, task: string) => {
+    const list = getState().agents.filter((a) => a.projectId === projectId)
+    if (!list.length) throw new Error('This project has no agents yet')
+    const busy = (id: string): string => (agents.isRunning(id) ? agents.runtime(id).status : 'stopped')
+    const roster = list.map((a) => `- id=${a.id} name=${a.name} role=${a.role} cli=${a.providerId} status=${busy(a.id)}`).join('\n')
+    const out = await runClaude(
+      `Pick the single best agent for this task. Prefer a matching role; among equals prefer one that is waiting over working, and working over stopped.\n\nAgents:\n${roster}\n\nTask:\n${task.slice(0, 3000)}\n\nAnswer with JSON only: {"agentId":"...","reason":"one short sentence"}`,
+      { args: '--model haiku', timeoutMs: 60_000 }
+    )
+    const m = out.match(/\{[\s\S]*\}/)
+    try {
+      const j = JSON.parse(m?.[0] ?? '{}') as { agentId?: string; reason?: string }
+      if (j.agentId && list.some((a) => a.id === j.agentId)) return { agentId: j.agentId, reason: j.reason ?? '' }
+    } catch {
+      /* fall through */
+    }
+    const fb = list.find((a) => busy(a.id) === 'waiting') ?? list[0]
+    return { agentId: fb.id, reason: 'Fallback: first idle agent' }
+  })
+
+  // ---------- structured questions (Claude's AskUserQuestion) ----------
+  const questions = new Map<string, { agentId: string; questions: unknown[]; at: number }>()
+  ipcMain.handle('questions:list', () => [...questions.values()])
+  ipcMain.handle('questions:answer', async (_e, agentId: string, picks: number[][], other?: string) => {
+    const q = questions.get(agentId)
+    questions.delete(agentId)
+    ctx.send('question:cleared', agentId)
+    if (!q) return
+    const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+    const qs = q.questions as { options?: unknown[]; multiSelect?: boolean }[]
+    for (let i = 0; i < qs.length; i++) {
+      const sel = picks[i] ?? [0]
+      const n = qs[i].options?.length ?? 0
+      if (other && i === qs.length - 1 && !sel.length) {
+        // "Other": last option row is free text
+        for (let k = 0; k < n; k++) agents.write(agentId, '\x1b[B'), await wait(40)
+        agents.write(agentId, '\r')
+        await wait(150)
+        agents.write(agentId, other)
+        await wait(80)
+        agents.write(agentId, '\r')
+      } else if (qs[i].multiSelect) {
+        let pos = 0
+        for (const s of [...sel].sort((x, y) => x - y)) {
+          while (pos < s) agents.write(agentId, '\x1b[B'), pos++, await wait(40)
+          agents.write(agentId, ' ')
+          await wait(60)
+        }
+        while (pos < n) agents.write(agentId, '\x1b[B'), pos++, await wait(40)
+        agents.write(agentId, '\r')
+      } else {
+        for (let k = 0; k < (sel[0] ?? 0); k++) agents.write(agentId, '\x1b[B'), await wait(40)
+        agents.write(agentId, '\r')
+      }
+      await wait(300)
+    }
+    // final "Submit answers" screen when there is more than one question
+    if (qs.length > 1) agents.write(agentId, '\r')
+  })
+
   return {
     onRuntime(rt) {
       const prev = prevStatus.get(rt.agentId)
@@ -320,12 +407,36 @@ export function registerAutomation(ctx: FeatureCtx): {
       if (prev === 'working' && rt.status === 'waiting' && rt.running && !rt.queue?.length) {
         const a = getState().agents.find((x) => x.id === rt.agentId)
         if (!a) return
+        const card = autoCard.get(a.id)
+        if (card) {
+          autoCard.delete(a.id)
+          save((s) => {
+            const t = s.tasks.find((x) => x.id === card)
+            if (t && t.status === 'doing') Object.assign(t, { status: 'done', updatedAt: Date.now() })
+          })
+          setTimeout(() => pickFor(a), 4000)
+        }
         if (waitingRun.has(a.id)) stepDone(a.id).catch(() => undefined)
         else if (ps(a.projectId).testGuard)
           changedSinceLast(a).then((changed) => (changed ? runTests(a) : null)).catch(() => undefined)
       }
     },
     onHook(agentId, event, payload) {
+      if (event === 'PreToolUse' && payload.tool_name === 'AskUserQuestion') {
+        const qs = (payload.tool_input?.questions ?? []) as unknown[]
+        if (Array.isArray(qs) && qs.length) {
+          const q = { agentId, questions: qs, at: Date.now() }
+          questions.set(agentId, q)
+          ctx.send('question:ready', q)
+          const a = getState().agents.find((x) => x.id === agentId)
+          notify(`❓ ${a?.name ?? 'Agent'} asks you something`, String((qs[0] as { question?: string }).question ?? ''), agentId)
+        }
+        return
+      }
+      if ((event === 'UserPromptSubmit' || event === 'Stop') && questions.has(agentId)) {
+        questions.delete(agentId)
+        ctx.send('question:cleared', agentId)
+      }
       if (event !== 'PreToolUse' || payload.tool_name !== 'ExitPlanMode') return
       const plan = String(payload.tool_input?.plan ?? '').trim()
       if (!plan) return
@@ -338,6 +449,7 @@ export function registerAutomation(ctx: FeatureCtx): {
     dispose() {
       clearInterval(t1)
       clearInterval(t2)
+      clearInterval(t3)
     }
   }
 }

@@ -100,7 +100,13 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Projects** are folders on your disk; create as many agents per project as you like (name, role, colour, CLI, first task).
 - **Supported CLIs:** Claude Code, Codex CLI, Gemini CLI, plain shell – add any other CLI in *Settings → Agents & CLIs* (with a PATH check).
 - **Git worktree isolation:** each agent works in `../.hive-worktrees/<project>/<agent>` on branch `hive/<agent>`.
-- **Precise status for Claude Code** via hooks (working / needs you / done); other CLIs use output-silence detection.
+- **Precise status for Claude Code** via hooks (working / needs you / done); Codex reports turn ends through its `notify` hook, Codex and Gemini are also read from the screen ("esc to interrupt").
+- **Sign in from Hive:** *Settings → Agents & CLIs* has a *Sign in* button per CLI that opens its login in a terminal and shows who is signed in.
+- **Multiple accounts:** add extra Claude Code / Codex accounts (each gets its own config folder); choose one per project or per agent.
+- **Quota switch:** when an account hits its usage limit, the conversation continues on the next account of that CLI – or is handed to another CLI.
+- **Per-CLI defaults:** model and reasoning effort for each CLI, overridable per agent; optional answer language for agents.
+- **Clone from Git:** project menu → *Clone from Git…* lists your GitHub / GitLab repos (`gh` / `glab`) or takes any URL and adds the clone as a project.
+- **Restore on launch:** agents and dev servers that were running when you quit come back, with their conversations resumed.
 - **Remote agents over SSH:** run the CLI on a server (`user@host` + folder); hooks and Hive's MCP tools travel back through an SSH reverse tunnel.
 - **Resume** the last conversation, **restart**, **interrupt**, **duplicate**, **pause after this turn** – from the right-click menu anywhere.
 - **Teams:** set *Reports to*; Claude leads get MCP tools to delegate, wait for and read reports from their team.
@@ -111,7 +117,9 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Message box** with prompt library, screenshots (**⌘⇧2**, paste or drop images) you can **draw on** (circle, arrow, box, pen), voice dictation 🎤 and a ✨ prompt enhancer.
 - **Pick an element** in the dev-server preview and send its selector, text, styles and HTML to an agent with your note.
 - **Message queue:** while an agent works, Enter queues messages (reorder, send now, remove); ⌘Enter sends immediately.
-- **Conversation view** and a **context meter** (`ctx 62% · 124k/200k`) for Claude Code sessions.
+- **Conversation view** and a **context meter** (`ctx 62% · 124k/200k`) for Claude Code, Codex and Gemini sessions.
+- **Clickable questions:** when Claude asks a multiple-choice question, the options appear as buttons (multi-select and your own answer work too).
+- **Figma:** the 🎨 button in the message box attaches a frame from a Figma link (image + frame name, size and texts; needs a `FIGMA_TOKEN` secret).
 - **⌘K command palette:** agents, files, prompts, skills, cards, dev servers, views and actions.
 - **Views:** office room, terminal grid, split view (2–4 agents), full agent view with changes panel.
 
@@ -124,7 +132,9 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Commit context:** commits made in Hive carry the agent's conversation as a git note (`git log --notes=hive`, or the 🕘 history in the Changes panel).
 
 ### Automation
-- **Backlog board** (Todo / In progress / Done) with per-column prompts and read-only **GitHub Issues import** (`gh` or public API).
+- **Backlog board** (Todo / In progress / Done) with per-column prompts and read-only imports from **GitHub Issues, Linear, Jira, Notion and Azure DevOps** (tokens are kept as secrets).
+- **Auto-pick:** idle agents take the next Todo card themselves (only their assigned cards, or any card) and mark it done when their turn ends.
+- **Advisor:** *Suggest agent* on a card picks the best-fitting agent for the task (role, status) with a one-line reason.
 - **Idea radar:** paste raw feedback (reviews, support mails, Slack) – it's grouped into themes with counts and quotes; one click turns a theme into a card.
 - **Webhooks:** a local URL per trigger (`POST /trigger/<id>?token=…`) that starts or messages an agent – for CI, scripts or GitHub / Slack via a tunnel.
 - **Schedules:** once, hourly, daily, weekdays, weekly – typed into the running session or a fresh one.
@@ -136,7 +146,7 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 
 ### Knowledge & tools
 - **Project memory** shared by all Claude agents (they can add to it with `remember`).
-- **Skills:** reusable procedures agents fetch with `get_skill` (or you insert from ⌘K).
+- **Skills:** reusable procedures agents fetch with `get_skill` (or you insert from ⌘K); export them as `SKILL.md` files for Claude Code (project or user), Codex or as Cursor rules, and import existing `SKILL.md` folders.
 - **Shared MCP servers:** define once, every Claude agent gets them.
 - **Databases:** PostgreSQL, MySQL, MongoDB – agents query with `db_list` / `db_query`, one statement per call, read-only by default (read-only transactions), credentials encrypted and never shown to the agent.
 - **Secrets:** API keys stored with the system keychain, given to agents as environment variables, masked (••••••) in every terminal view; Claude agents see only the names (`list_secrets`).
@@ -145,7 +155,7 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Code editor** (Monaco): explorer with git colours, tabs, quick open, IntelliSense with auto-import, markdown preview, auto save, VS Code / JetBrains keymaps, *Open in IDE* (VS Code, Cursor, JetBrains IDEs, Zed…).
 - **Dev servers** with detected commands and a **live preview** (device widths, auto-reload).
 - **Share** a dev server – or the webhook port – on a public HTTPS URL (Cloudflare quick tunnel via `cloudflared`, falls back to localtunnel).
-- **Usage & cost:** tokens and estimated cost per agent and per day from Claude Code's session logs.
+- **Usage & cost:** tokens and estimated cost per agent and per day from Claude Code, Codex and Gemini session logs.
 - **Weekly report** (Usage → Weekly report): commits, lines, finished cards and cost per agent for 7 / 14 / 30 days – copy as Markdown.
 - **Session replay** (right-click → Session replay): step through a session turn by turn and see which tool calls filled the context window.
 
@@ -207,8 +217,49 @@ src/
 - [x] Sketch on screenshots · pick elements in the preview · idea radar · webhook triggers · commit context
 - [x] Weekly report · session replay · secrets manager · office animations
 - [x] Database connections · SSH agents · localhost tunnel · Turkish UI
-- [ ] Richer Codex / Gemini integration (usage, conversation view)
-- [ ] Mobile companion
+- [x] Codex / Gemini usage, conversation view and context meter · backlog auto-pick · CLI sign-in · Turkish hints
+- [x] Figma frames · Linear / Jira / Notion / Azure DevOps import · clone from Git · SKILL.md export · restore on launch
+- [x] Quota switch · per-CLI reasoning effort · advisor · clickable questions · multiple accounts
+
+### Later (to do)
+
+**Teams & delegation**
+- [ ] Visual team editor (conditional branches, loops, max cycles)
+- [ ] Agent mail between agents · ticket scoping · delegation chains
+- [ ] More built-in roles and sharing agent definitions
+
+**Scheduling & triggers**
+- [ ] Monthly schedules, "when the quota resets", catch up on missed runs
+- [ ] Webhook signature verification and filters
+
+**Sessions & workspace**
+- [ ] Import existing terminal sessions
+- [ ] Linked folders (`--add-dir`)
+- [ ] Non-code workspaces / non-developer mode
+
+**Prompts & voice**
+- [ ] Voice mode and read-aloud replies
+- [ ] Per-project prompt folders shared through git
+- [ ] Prompt chaining · draft persistence · Obsidian sync
+
+**Monitoring**
+- [ ] Status island · context canary · adaptive mode
+- [ ] Cache hit rate and unread badges · pause summaries
+
+**Review & QA**
+- [ ] Per-agent diff on a shared branch · "Ask Claude" about a diff
+- [ ] Add steps to a plan during review
+- [ ] QA in an embedded browser · Chrome control
+
+**Providers & infrastructure**
+- [ ] More provider presets · proxy per CLI · tool sets
+- [ ] MCP servers for backlog, commands and prompts
+- [ ] Saved SSH servers, SSH tunnels, AWS SSM, Cloud SQL
+- [ ] CLI doctor
+
+**Needs a server**
+- [ ] Mobile app · remote fleet · cloud agents · machine pool · remote control
+- [ ] Migration between machines · public backlog portal · developer email inbox · push API
 
 ## Contributing
 
