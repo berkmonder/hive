@@ -10,7 +10,35 @@ type Shot = { path: string; dataUrl: string }
 
 /** Prompt box: send / queue, prompt library, screenshots & images, dictation, prompt enhancer. */
 export function Composer({ agentId, compact }: { agentId: string; compact?: boolean }) {
-  const [text, setText] = useState('')
+  const draftKey = (id: string): string => `hive.draft.${id}`
+  const [text, setText] = useState(() => {
+    try {
+      return localStorage.getItem(draftKey(agentId)) ?? ''
+    } catch {
+      return ''
+    }
+  })
+  // unsent text survives switching agents and restarting Hive
+  const firstDraft = useRef(true)
+  useEffect(() => {
+    if (firstDraft.current) {
+      firstDraft.current = false
+      return
+    }
+    try {
+      setText(localStorage.getItem(draftKey(agentId)) ?? '')
+    } catch {
+      setText('')
+    }
+  }, [agentId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    try {
+      if (text.trim()) localStorage.setItem(draftKey(agentId), text)
+      else localStorage.removeItem(draftKey(agentId))
+    } catch {
+      /* storage unavailable */
+    }
+  }, [text]) // eslint-disable-line react-hooks/exhaustive-deps
   const [shots, setShots] = useState<Shot[]>([])
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null)
   const [rec, setRec] = useState<'idle' | 'rec' | 'busy'>('idle')

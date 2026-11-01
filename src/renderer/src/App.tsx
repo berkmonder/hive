@@ -28,6 +28,20 @@ import { Character } from './components/Character'
 import { lazy, Suspense } from 'react'
 const CodeView = lazy(() => import('./editor/CodeView'))
 
+type NavItem = { id: 'room' | 'grid' | 'split' | 'board' | 'code' | 'servers' | 'usage' | 'project'; icon: Parameters<typeof Icon>[0]['name']; label: string; title: string; needsProject?: boolean }
+const NAV: (NavItem | '|')[] = [
+  { id: 'room', icon: 'room', label: 'Room', title: 'Room' },
+  { id: 'grid', icon: 'grid', label: 'Grid', title: 'Terminal grid' },
+  { id: 'split', icon: 'split', label: 'Split', title: 'Split view', needsProject: true },
+  '|',
+  { id: 'board', icon: 'kanban', label: 'Backlog', title: 'Backlog & schedules', needsProject: true },
+  { id: 'code', icon: 'code', label: 'Code', title: 'Code editor', needsProject: true },
+  { id: 'servers', icon: 'server', label: 'Servers', title: 'Dev servers & preview', needsProject: true },
+  '|',
+  { id: 'usage', icon: 'chart', label: 'Usage', title: 'Usage & cost', needsProject: true },
+  { id: 'project', icon: 'brain', label: 'Workspace', title: 'Memory, skills, MCP & processes', needsProject: true }
+]
+
 export default function App() {
   const { ready, init, app, runtimes, selectedProjectId, view, setView, focusAgent, showNewAgent, setShowNewAgent, platform, editingAgentId, toast, showLibrary, setShowLibrary, awake, conflicts, budget } = useStore()
 
@@ -84,34 +98,19 @@ export default function App() {
         <div className="brand">
           <div className="logo"><HiveLogo size={26} /></div>
         </div>
-        <div className="seg">
-          <button className={view === 'room' ? 'on' : ''} title="Room" onClick={() => setView('room')}><Icon name="room" /></button>
-          <button className={view === 'grid' ? 'on' : ''} title="Terminal grid" onClick={() => setView('grid')}><Icon name="grid" /></button>
-          <button className={view === 'split' ? 'on' : ''} title="Split view" disabled={!project} onClick={() => setView('split')}><Icon name="split" /></button>
-          <button className={view === 'board' ? 'on' : ''} title="Backlog & schedules" disabled={!project} onClick={() => setView('board')}><Icon name="kanban" /></button>
-          <button className={view === 'code' ? 'on' : ''} title="Code editor" disabled={!project} onClick={() => setView('code')}><Icon name="code" /></button>
-          <button className={view === 'servers' ? 'on' : ''} title="Dev servers & preview" disabled={!project} onClick={() => setView('servers')}><Icon name="server" /></button>
-          <button className={view === 'usage' ? 'on' : ''} title="Usage & cost" disabled={!project} onClick={() => setView('usage')}><Icon name="chart" /></button>
-          <button className={view === 'project' ? 'on' : ''} title="Memory, skills, MCP & processes" disabled={!project} onClick={() => setView('project')}><Icon name="brain" /></button>
-        </div>
-        <button className="add-dashed" title="New agent (⌘N)" disabled={!project} onClick={() => setShowNewAgent(true)}>
-          <Icon name="plus" />
-        </button>
-        <strong className="proj-name">{project?.name ?? 'Hive'}</strong>
-        {project && (
-          <button className="icon-btn" title={project.path} onClick={() => window.api.openPath(project.path)}>
-            <Icon name="folder" />
-          </button>
-        )}
+        <nav className="seg nav-seg">
+          {NAV.map((n, i) => n === '|' ? <i key={i} className="seg-div" /> : (
+            <button key={n.id} className={view === n.id ? 'on' : ''} title={n.title} disabled={n.needsProject && !project} onClick={() => setView(n.id)}>
+              <Icon name={n.icon} />{view === n.id && <span>{n.label}</span>}
+            </button>
+          ))}
+        </nav>
         {waiting.length > 0 && (
           <button className="need-pill" onClick={() => focusAgent(waiting[0].id)}>
             <i className="dot waiting" /> {waiting.length} need input
           </button>
         )}
         <div className="spacer" />
-        <button className="search-btn" title="Search everything (⌘K)" onClick={() => useStore.getState().setPalette(true)}>
-          <Icon name="search" size={13} /> <span>Search</span> <span className="kbd">⌘K</span>
-        </button>
         {conflicts.length > 0 && (
           <span className="conflict-pill" title={conflicts.map((c) => `${c.file}: ${c.agentIds.map((id) => app.agents.find((a) => a.id === id)?.name).join(' & ')}`).join('\n')}>
             <Icon name="branch" size={13} /> {conflicts.length} overlap{conflicts.length > 1 ? 's' : ''}
@@ -123,45 +122,36 @@ export default function App() {
           </span>
         ) : null}
         {awake && <span className="awake-pill" title="Keeping the Mac awake while agents work or dev servers run (Settings → Agents)"><Icon name="coffee" size={13} /></span>}
-        {project && paused > 0 && (
-          <button className="btn ghost sm" title="Resume paused agents (their conversations continue)" onClick={() => window.api.resumeProject(project.id)}>
-            <Icon name="play" size={13} /> Resume {paused}
-          </button>
-        )}
-        {project && running > 0 && (
-          <button className="icon-btn" title="Pause project: every agent stops after its current turn – safe to close the lid" onClick={() =>
-            window.api.pauseProject(project.id).then((n) => toast(`Pausing ${n} agent${n === 1 ? '' : 's'} after their current turn…`))
-          }>
-            <Icon name="pause" />
-          </button>
-        )}
-        <button className="btn ghost sm" title="Prompt & role library" onClick={() => setShowLibrary('prompts')}>
-          <Icon name="book" size={14} /> Library
+        <button className="search-btn" title="Search everything (⌘K)" onClick={() => useStore.getState().setPalette(true)}>
+          <Icon name="search" size={13} /> <span>Search</span> <span className="kbd">⌘K</span>
         </button>
-        {project && running > 0 && (
-          <button className="btn ghost sm" title="Stop every running agent in this project" onClick={() => {
-            if (confirm(`Stop all ${running} running agents in ${project.name}?`))
-              window.api.stopAll(project.id).then(() => toast('Stopping all agents…'))
-          }}>
-            <Icon name="power" size={14} /> Stop all
-          </button>
-        )}
-        {project && agents.length > running && (
-          <button className="btn ghost sm" title="Start every stopped agent in this project" onClick={() => window.api.startAll(project.id)}>
-            <Icon name="play" size={14} /> Start all
-          </button>
+        {project && agents.length > 0 && (
+          <div className="run-group">
+            {paused > 0 ? (
+              <button title="Resume paused agents (their conversations continue)" onClick={() => window.api.resumeProject(project.id)}>
+                <Icon name="play" size={13} /> Resume {paused}
+              </button>
+            ) : agents.length > running ? (
+              <button title="Start every stopped agent in this project" onClick={() => window.api.startAll(project.id)}>
+                <Icon name="play" size={13} /> Start all
+              </button>
+            ) : null}
+            {running > 0 && (
+              <button title="Pause project: every agent stops after its current turn – safe to close the lid" onClick={() =>
+                window.api.pauseProject(project.id).then((n) => toast(`Pausing ${n} agent${n === 1 ? '' : 's'} after their current turn…`))
+              }><Icon name="pause" size={13} /></button>
+            )}
+            {running > 0 && (
+              <button className="danger" title="Stop every running agent in this project" onClick={() => {
+                if (confirm(`Stop all ${running} running agents in ${project.name}?`))
+                  window.api.stopAll(project.id).then(() => toast('Stopping all agents…'))
+              }}><Icon name="power" size={13} /></button>
+            )}
+          </div>
         )}
         <button className={`icon-btn ${view === 'settings' ? 'on' : ''}`} title="Settings (⌘,)" onClick={() => view === 'settings' ? (useStore.getState().focusedAgentId ? setView('focus') : setView(useStore.getState().lastOverview)) : setView('settings')}>
           <Icon name="gear" />
         </button>
-        {project && (
-          <button className="icon-btn danger" title="Remove project from list" onClick={() => {
-            if (confirm(`Remove "${project.name}" and its agents from Hive? (Files are not deleted.)`))
-              window.api.removeProject(project.id)
-          }}>
-            <Icon name="trash" />
-          </button>
-        )}
       </header>
 
       <div className="app-body" style={{ gridTemplateColumns: `${L.sidebarW}px 10px minmax(0, 1fr)` }}>

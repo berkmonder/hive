@@ -147,6 +147,24 @@ function updateBadge(): void {
 function registerIpc(): void {
   ipcMain.handle('state:get', () => ({ state: getState(), runtimes: agents.allRuntimes(), servers: servers.all(), platform: process.platform }))
 
+  ipcMain.handle('project:folders', async (_e, id: string, op: 'add' | 'remove', path?: string) => {
+    let dir = path
+    if (op === 'add') {
+      const r = await dialog.showOpenDialog(win!, { title: 'Link another folder to this project', properties: ['openDirectory', 'createDirectory', 'multiSelections'] })
+      if (r.canceled || !r.filePaths.length) return
+      updateState((s) => {
+        const p = s.projects.find((x) => x.id === id)
+        if (p) p.folders = [...new Set([...(p.folders ?? []), ...r.filePaths.filter((f) => f !== p.path)])]
+      })
+    } else if (dir) {
+      updateState((s) => {
+        const p = s.projects.find((x) => x.id === id)
+        if (p) p.folders = (p.folders ?? []).filter((f) => f !== dir)
+      })
+    }
+    dir = undefined
+    broadcastState()
+  })
   ipcMain.handle('project:add', async () => {
     const res = await dialog.showOpenDialog(win!, {
       title: 'Choose project folder',
@@ -470,6 +488,13 @@ function startAgent(id: string, resume: boolean, prompt?: string, forkArgs?: str
   if (model && !forkArgs) extraArgs = `${extraArgs ?? ''} ${provider.id === 'claude' ? '--model' : '-m'} '${model.replace(/'/g, '')}'`.trim()
   if (effort && provider.id === 'codex') extraArgs = `${extraArgs ?? ''} -c model_reasoning_effort='"${effort}"'`.trim()
   if (effort && provider.id === 'claude') env.MAX_THINKING_TOKENS = String({ low: 4000, medium: 16000, high: 31999 }[effort])
+  // linked folders: the agent may work in these too
+  const linked = (getState().projects.find((p) => p.id === agent.projectId)?.folders ?? []).filter((f) => agent.ssh || existsSync(f))
+  if (linked.length) {
+    const qq = (f: string): string => `'${f.replace(/'/g, `'\\''`)}'`
+    if (provider.id === 'claude' || provider.id === 'codex') extraArgs = `${extraArgs ?? ''} ${linked.map((f) => `--add-dir ${qq(f)}`).join(' ')}`.trim()
+    else if (provider.id === 'gemini') extraArgs = `${extraArgs ?? ''} --include-directories ${qq(linked.join(','))}`.trim()
+  }
   if (forkArgs) extraArgs = `${extraArgs ?? ''} ${forkArgs}`.trim()
   if (agent.paused) updateState((s) => s.agents.forEach((a) => a.id === id && delete a.paused))
   agents.start(agent, provider, cwd, { resume, prompt, extraArgs, env, ssh: agent.ssh })

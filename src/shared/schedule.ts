@@ -17,6 +17,16 @@ export function nextRun(s: Schedule, from: number): number | null {
     return t.getTime()
   }
   const [h, m] = hm(s.time)
+  if (s.kind === 'monthly') {
+    for (let i = 0; i < 3; i++) {
+      const y = d.getFullYear()
+      const mo = d.getMonth() + i
+      const last = new Date(y, mo + 1, 0).getDate()
+      const t = new Date(y, mo, Math.min(s.monthDay ?? 1, last), h, m, 0, 0)
+      if (t.getTime() > from) return t.getTime()
+    }
+    return null
+  }
   for (let i = 0; i < 8; i++) {
     const t = new Date(d)
     t.setDate(d.getDate() + i)
@@ -43,5 +53,7 @@ export function describeSchedule(s: Schedule): string {
       return `Weekdays at ${s.time}`
     case 'weekly':
       return `Every ${DAYS[s.weekday ?? 1]} at ${s.time}`
+    case 'monthly':
+      return `Monthly on day ${s.monthDay ?? 1} at ${s.time}`
   }
 }

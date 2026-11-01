@@ -322,7 +322,26 @@ const TR: Record<string, string> = {
   "Add another Claude Code account": "Başka bir Claude Code hesabı ekle",
   "Add another Codex account": "Başka bir Codex hesabı ekle",
   "Starting…": "Başlıyor…",
-  "Accounts for this project": "Bu projenin hesapları"
+  "Accounts for this project": "Bu projenin hesapları",
+  "Projects": "Projeler",
+  "Link folder": "Klasör bağla",
+  "Unlink folder": "Klasör bağlantısını kaldır",
+  "Folders Hive works in. Link more folders to a project when the work spans several repos (e.g. API + web) – agents get access to all of them. Removing a project only takes it out of Hive; files stay on disk.": "Hive'ın çalıştığı klasörler. İş birden fazla repoya yayılıyorsa (örn. API + web) projeye başka klasörler bağla – ajanlar hepsine erişir. Projeyi kaldırmak sadece Hive'dan çıkarır; dosyalar diskte kalır.",
+  "Agents may also read and edit these folders (restart running agents)": "Ajanlar bu klasörleri de okuyup düzenleyebilir (çalışan ajanları yeniden başlat)",
+  "Saved prompts and agent roles – also reachable from ⌘K and the message box.": "Kayıtlı prompt'lar ve ajan rolleri – ⌘K ve mesaj kutusundan da ulaşılır.",
+  "Grid": "Izgara",
+  "Split": "Bölünmüş",
+  "Servers": "Sunucular",
+  "Usage": "Kullanım",
+  "Every month": "Her ay",
+  "Day of month": "Ayın günü",
+  "Catch up: if Hive was closed at the scheduled time, run once when it opens": "Telafi et: zamanında Hive kapalıysa açılınca bir kez çalıştır",
+  "Only these events": "Sadece bu olaylar",
+  "Only if the payload contains": "Sadece içerik şunu içeriyorsa",
+  "Signing secret": "İmza anahtarı",
+  "Generate": "Oluştur",
+  "Secret generated and copied": "Anahtar oluşturuldu ve kopyalandı",
+  "Add folder…": "Klasör ekle…"
 }
 
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [
@@ -334,6 +353,8 @@ const PATTERNS: [RegExp, (...m: string[]) => string][] = [
   [/^(.+)['’]s team$/i, (_, n) => `${n} ekibi`],
   [/^\+ New agent$/, () => '+ Yeni ajan'],
   [/^(\d+) overlaps?$/, (_, n) => `${n} çakışma`],
+  [/^Monthly on day (\d+) at (.+)$/, (_, d, t) => `Her ayın ${d}. günü ${t}`],
+  [/^Resume (\d+)$/, (_, n) => `${n} ajanı sürdür`],
   [/^(.+) asks$/, (_, n) => `${n} soruyor`],
   [/^Sign in · (.+)$/, (_, n) => `Giriş yap · ${n}`],
   [/^Import from (.+)$/, (_, n) => `${n} kaynağından aktar`],

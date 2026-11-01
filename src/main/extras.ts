@@ -3,7 +3,7 @@
  */
 import { ipcMain } from 'electron'
 import { createServer, Server } from 'http'
-import { randomBytes, randomUUID } from 'crypto'
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'crypto'
 import simpleGit from 'simple-git'
 import type { Agent, Idea, Trigger } from '@shared/types'
 import { getState, updateState } from './store'
@@ -140,13 +140,29 @@ export function registerExtras(ctx: FeatureCtx): { dispose: () => void; commitNo
       const m = req.url?.match(/^\/trigger\/([\w-]+)(?:\?token=([\w-]+))?/)
       const t = m && getState().triggers.find((x) => x.id === m[1])
       const token = m?.[2] ?? String(req.headers['x-hive-token'] ?? '')
-      if (!t || !t.enabled || token !== t.token || req.method !== 'POST') {
+      if (!t || !t.enabled || req.method !== 'POST' || (!t.secret && token !== t.token)) {
         res.writeHead(t ? 403 : 404).end()
         return
       }
       let body = ''
       req.on('data', (c) => body.length < 2_000_000 && (body += c))
       req.on('end', () => {
+        // signed webhooks (GitHub X-Hub-Signature-256, or X-Hive-Signature) – HMAC-SHA256 of the raw body
+        if (t.secret) {
+          const sig = String(req.headers['x-hub-signature-256'] ?? req.headers['x-hive-signature'] ?? '').replace(/^sha256=/, '')
+          const want = createHmac('sha256', t.secret).update(body).digest('hex')
+          if (!sig || sig.length !== want.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(want))) {
+            res.writeHead(401).end('bad signature')
+            return
+          }
+        }
+        const ev = String(req.headers['x-github-event'] ?? req.headers['x-event'] ?? '')
+        const events = (t.events ?? '').split(',').map((x) => x.trim()).filter(Boolean)
+        const skip = (events.length && !events.includes(ev)) || (t.match?.trim() && !body.toLowerCase().includes(t.match.trim().toLowerCase()))
+        if (skip) {
+          res.writeHead(202, { 'Content-Type': 'application/json' }).end(JSON.stringify({ ok: true, skipped: true }))
+          return
+        }
         let summary = body
         try {
           summary = JSON.stringify(JSON.parse(body), null, 1)

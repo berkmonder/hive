@@ -313,6 +313,7 @@ function ScheduleEditor({ s: init, agents, onClose }: { s: Schedule; agents: Age
               <option value="daily">Every day</option>
               <option value="weekdays">Weekdays</option>
               <option value="weekly">Every week</option>
+              <option value="monthly">Every month</option>
             </select>
           </label>
           {s.kind === 'once' && <label>When<input type="datetime-local" value={local(s.onceAt)} onChange={(e) => setS({ ...s, onceAt: new Date(e.target.value).getTime(), lastRun: undefined })} /></label>}
@@ -324,9 +325,17 @@ function ScheduleEditor({ s: init, agents, onClose }: { s: Schedule; agents: Age
               </select>
             </label>
           )}
-          {['daily', 'weekdays', 'weekly'].includes(s.kind) && <label>Time<input type="time" value={s.time} onChange={(e) => setS({ ...s, time: e.target.value })} /></label>}
+          {s.kind === 'monthly' && (
+            <label>Day of month
+              <select value={s.monthDay ?? 1} onChange={(e) => setS({ ...s, monthDay: Number(e.target.value) })}>
+                {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}{i >= 28 ? ' (or last day)' : ''}</option>)}
+              </select>
+            </label>
+          )}
+          {['daily', 'weekdays', 'weekly', 'monthly'].includes(s.kind) && <label>Time<input type="time" value={s.time} onChange={(e) => setS({ ...s, time: e.target.value })} /></label>}
         </div>
         <label className="check"><input type="checkbox" checked={!!s.fresh} onChange={(e) => setS({ ...s, fresh: e.target.checked })} /> Start a fresh session for every run (otherwise it is typed into the current one)</label>
+        {s.kind !== 'once' && <label className="check"><input type="checkbox" checked={s.catchUp !== false} onChange={(e) => setS({ ...s, catchUp: e.target.checked })} /> Catch up: if Hive was closed at the scheduled time, run once when it opens</label>}
         <div className="modal-foot">
           <button className="btn ghost" onClick={onClose}>Cancel</button>
           <button className="btn" disabled={!ok} onClick={() => (window.api.schedules.save(s), onClose())}>Save</button>
@@ -583,7 +592,7 @@ function Triggers() {
               <button role="switch" aria-checked={t.enabled} className={`switch ${t.enabled ? 'on' : ''}`} onClick={() => window.api.extras.saveTrigger({ ...t, enabled: !t.enabled })}><i /></button>
               <div className="sr-main" onClick={() => setEdit(t)}>
                 <b>{t.name}</b>
-                <span>→ {a?.name ?? '?'}{t.fired ? ` · fired ${t.fired}× · last ${timeAgo(t.lastFired)}` : ' · never fired'}</span>
+                <span>→ {a?.name ?? '?'}{t.secret ? ' · signed' : ''}{t.events ? ` · ${t.events}` : ''}{t.fired ? ` · fired ${t.fired}× · last ${timeAgo(t.lastFired)}` : ' · never fired'}</span>
                 <code className="trig-url">{url(t)}</code>
               </div>
               <button className="btn ghost sm" onClick={() => copy(url(t))}><Icon name="copy" size={12} /> URL</button>
@@ -606,6 +615,22 @@ function Triggers() {
             </label>
             <label>Prompt (<code>{'{{payload}}'}</code> = request body, <code>{'{{event}}'}</code> = event header)
               <textarea rows={5} value={edit.prompt} onChange={(e) => setEdit({ ...edit, prompt: e.target.value })} />
+            </label>
+            <div className="row">
+              <label style={{ flex: 1 }}>Only these events <small className="muted">(comma separated, empty = all)</small>
+                <input className="mono" value={edit.events ?? ''} placeholder="workflow_run, issues" onChange={(e) => setEdit({ ...edit, events: e.target.value || undefined })} /></label>
+              <label style={{ flex: 1 }}>Only if the payload contains
+                <input value={edit.match ?? ''} placeholder="failure" onChange={(e) => setEdit({ ...edit, match: e.target.value || undefined })} /></label>
+            </div>
+            <label>Signing secret <small className="muted">(optional – GitHub "Secret"; requests must carry a valid X-Hub-Signature-256 / X-Hive-Signature)</small>
+              <div className="row">
+                <input className="mono" type="password" value={edit.secret ?? ''} onChange={(e) => setEdit({ ...edit, secret: e.target.value || undefined })} />
+                <button type="button" className="btn ghost sm" onClick={() => {
+                  const sec = Array.from(crypto.getRandomValues(new Uint8Array(20))).map((x) => x.toString(16).padStart(2, '0')).join('')
+                  setEdit({ ...edit, secret: sec })
+                  window.api.copyText(sec).then(() => toast('Secret generated and copied', 'success'))
+                }}>Generate</button>
+              </div>
             </label>
             <div className="modal-foot">
               <button className="btn ghost" onClick={() => setEdit(null)}>Cancel</button>

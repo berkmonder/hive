@@ -14,6 +14,7 @@ function on<T>(channel: string, cb: (payload: T) => void): () => void {
 const api = {
   getState: (): Promise<{ state: AppState; runtimes: AgentRuntime[]; servers: ServerRuntime[]; platform: string }> =>
     ipcRenderer.invoke('state:get'),
+  projectFolders: (id: string, op: 'add' | 'remove', path?: string): Promise<void> => ipcRenderer.invoke('project:folders', id, op, path),
   addProject: (): Promise<Project | null> => ipcRenderer.invoke('project:add'),
   removeProject: (id: string): Promise<void> => ipcRenderer.invoke('project:remove', id),
   isRepo: (projectId: string): Promise<boolean> => ipcRenderer.invoke('project:isRepo', projectId),

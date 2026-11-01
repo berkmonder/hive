@@ -3,10 +3,11 @@ import { DEFAULT_PROVIDERS, type AppSettings, type Provider } from '@shared/type
 import { ACCENTS, THEMES, useStore, type ThemeId } from '../store'
 import { FONTS, LAYOUT_DEFAULTS, fontStack, useLayout, type Layout } from '../layout'
 import { HiveLogo, Icon, cleanError } from './common'
-import { AccountsSettings } from './More'
+import { AccountsSettings, CloneRepoModal } from './More'
 
-type Section = 'appearance' | 'terminal' | 'editor' | 'agents' | 'input' | 'notifications' | 'about'
+type Section = 'projects' | 'appearance' | 'terminal' | 'editor' | 'agents' | 'input' | 'notifications' | 'about'
 const SECTIONS: { id: Section; name: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
+  { id: 'projects', name: 'Projects', icon: 'folder' },
   { id: 'appearance', name: 'Appearance', icon: 'palette' },
   { id: 'terminal', name: 'Terminal', icon: 'terminal' },
   { id: 'editor', name: 'Editor & review', icon: 'code' },
@@ -44,6 +45,7 @@ export function SettingsView() {
         <p className="muted small set-nav-foot">Changes apply instantly.</p>
       </nav>
       <div className="set-body">
+        {section === 'projects' && <ProjectsSettings />}
         {section === 'appearance' && <Appearance />}
         {section === 'terminal' && <TerminalSettings />}
         {section === 'editor' && <EditorSettings />}
@@ -490,6 +492,49 @@ function About() {
           {SHORTCUTS.map(([k, d]) => <li key={k}><span className="kbd">{k}</span>{d}</li>)}
         </ul>
       </Group>
+    </>
+  )
+}
+
+function ProjectsSettings() {
+  const projects = useStore((s) => s.app.projects)
+  const agents = useStore((s) => s.app.agents)
+  const selected = useStore((s) => s.selectedProjectId)
+  const [cloning, setCloning] = useState(false)
+  return (
+    <>
+      <Group title="Projects" hint="Folders Hive works in. Link more folders to a project when the work spans several repos (e.g. API + web) – agents get access to all of them. Removing a project only takes it out of Hive; files stay on disk.">
+        {projects.map((p) => (
+          <Row key={p.id} label={p.name} hint={
+            <span className="proj-folders">
+              <span className="mono">{p.path}</span>
+              {(p.folders ?? []).map((f) => (
+                <span key={f} className="linked mono"><Icon name="plug" size={11} /> {f}
+                  <button className="link-btn" title="Unlink folder" onClick={() => window.api.projectFolders(p.id, 'remove', f)}><Icon name="x" size={11} /></button>
+                </span>
+              ))}
+            </span>
+          }>
+            <span className="muted small">{agents.filter((a) => a.projectId === p.id).length} agents</span>
+            <button className="btn ghost sm" title="Agents may also read and edit these folders (restart running agents)" onClick={() => window.api.projectFolders(p.id, 'add')}><Icon name="plus" size={12} /> Link folder</button>
+            {p.id !== selected && <button className="btn ghost sm" onClick={() => useStore.getState().selectProject(p.id)}>Open</button>}
+            <button className="icon-btn" title="Show in Finder" onClick={() => window.api.openPath(p.path)}><Icon name="folder" size={14} /></button>
+            <button className="icon-btn danger" title="Remove project from list" onClick={() => {
+              if (confirm(`Remove "${p.name}" and its agents from Hive? (Files are not deleted.)`)) window.api.removeProject(p.id)
+            }}><Icon name="trash" size={14} /></button>
+          </Row>
+        ))}
+        <div className="row" style={{ paddingTop: 10 }}>
+          <button className="btn ghost sm" onClick={() => window.api.addProject()}><Icon name="plus" size={13} /> Add folder…</button>
+          <button className="btn ghost sm" onClick={() => setCloning(true)}><Icon name="github" size={13} /> Clone from Git…</button>
+        </div>
+      </Group>
+      <Group title="Prompts & roles" hint="Saved prompts and agent roles – also reachable from ⌘K and the message box.">
+        <Row label="Library" hint={<span>Prompts with placeholders, roles that become the agent's system prompt.</span>}>
+          <button className="btn ghost sm" onClick={() => useStore.getState().setShowLibrary('prompts')}><Icon name="book" size={13} /> Open library</button>
+        </Row>
+      </Group>
+      {cloning && <CloneRepoModal onClose={() => setCloning(false)} />}
     </>
   )
 }

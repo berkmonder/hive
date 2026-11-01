@@ -335,6 +335,14 @@ export function registerFeatures(ctx: FeatureCtx): { dispose: () => void; onPaus
       if (!sc.enabled) continue
       const due = sc.kind === 'once' ? (sc.onceAt && !sc.lastRun && sc.onceAt <= now ? sc.onceAt : null) : nextRun(sc, sc.lastRun ?? now)
       if (due && due <= now) {
+        // missed while Hive was closed (more than 2 minutes late) and catch-up is off: skip to the next one
+        if (sc.kind !== 'once' && sc.catchUp === false && now - due > 120_000) {
+          updateState((s) => {
+            const x = s.schedules.find((y) => y.id === sc.id)
+            if (x) x.lastRun = now
+          })
+          continue
+        }
         try {
           runSchedule(sc.id)
         } catch (err) {

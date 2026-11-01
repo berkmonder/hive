@@ -67,15 +67,6 @@ export function Sidebar() {
       <div className="card search">
         <Icon name="search" size={16} />
         <input placeholder="Search agents…" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <button className={`icon-btn ${view === 'room' && !focusedAgentId ? 'on' : ''}`} title="Room" onClick={() => useStore.getState().setView('room')}>
-          <Icon name="room" />
-        </button>
-        <button className={`icon-btn ${view === 'grid' ? 'on' : ''}`} title="Terminal grid" onClick={() => useStore.getState().setView('grid')}>
-          <Icon name="grid" />
-        </button>
-        <button className={`icon-btn ${view === 'code' ? 'on' : ''}`} title="Code editor" onClick={() => useStore.getState().setView('code')}>
-          <Icon name="code" />
-        </button>
       </div>
 
       <div className="group-mode">

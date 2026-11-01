@@ -97,7 +97,7 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 ## Features
 
 ### Agents & projects
-- **Projects** are folders on your disk; create as many agents per project as you like (name, role, colour, CLI, first task).
+- **Projects** are folders on your disk – link more folders to a project when the work spans several repos (*Settings → Projects*); create as many agents per project as you like (name, role, colour, CLI, first task).
 - **Supported CLIs:** Claude Code, Codex CLI, Gemini CLI, plain shell – add any other CLI in *Settings → Agents & CLIs* (with a PATH check).
 - **Git worktree isolation:** each agent works in `../.hive-worktrees/<project>/<agent>` on branch `hive/<agent>`.
 - **Precise status for Claude Code** via hooks (working / needs you / done); Codex reports turn ends through its `notify` hook, Codex and Gemini are also read from the screen ("esc to interrupt").
@@ -136,8 +136,8 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Auto-pick:** idle agents take the next Todo card themselves (only their assigned cards, or any card) and mark it done when their turn ends.
 - **Advisor:** *Suggest agent* on a card picks the best-fitting agent for the task (role, status) with a one-line reason.
 - **Idea radar:** paste raw feedback (reviews, support mails, Slack) – it's grouped into themes with counts and quotes; one click turns a theme into a card.
-- **Webhooks:** a local URL per trigger (`POST /trigger/<id>?token=…`) that starts or messages an agent – for CI, scripts or GitHub / Slack via a tunnel.
-- **Schedules:** once, hourly, daily, weekdays, weekly – typed into the running session or a fresh one.
+- **Webhooks:** a local URL per trigger (`POST /trigger/<id>?token=…`) that starts or messages an agent – for CI, scripts or GitHub / Slack via a tunnel; optional HMAC signing (GitHub *Secret*) and event / text filters.
+- **Schedules:** once, hourly, daily, weekdays, weekly, monthly – typed into the running session or a fresh one; missed runs catch up when Hive opens.
 - **Workflows:** chain agents step by step; each step gets the previous agent's reply as `{{previous}}`. Templates included.
 - **Test guard:** after a turn that changed files, run the tests; failures go back to the agent (with a retry limit).
 - **Daily budget** per project: alerts at 50 % / 75 %, automatic pause at 100 %.
@@ -160,6 +160,7 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Session replay** (right-click → Session replay): step through a session turn by turn and see which tool calls filled the context window.
 
 ### Make it yours
+- **Pixel-art office:** agents walk between their desks, the lounge (sofa, coffee bar, arcade) and the review room depending on their status.
 - The office reacts: agents go for a coffee while their tests run, celebrate a merge with confetti, facepalm on red tests and show a 💡 when a plan is ready.
 - **English or Türkçe** interface (Settings → Appearance → Language).
 - Themes (Dark, Midnight, Light, System), six accent colours, interface size, fonts, cursor, keymap, notifications – all in **Settings** (⌘,).
@@ -229,18 +230,20 @@ src/
 - [ ] More built-in roles and sharing agent definitions
 
 **Scheduling & triggers**
-- [ ] Monthly schedules, "when the quota resets", catch up on missed runs
-- [ ] Webhook signature verification and filters
+- [x] Monthly schedules and catch-up of missed runs
+- [ ] Run "when the quota resets"
+- [x] Webhook signature verification and event / text filters
 
 **Sessions & workspace**
 - [ ] Import existing terminal sessions
-- [ ] Linked folders (`--add-dir`)
+- [x] Linked folders: several folders per project (`--add-dir`)
 - [ ] Non-code workspaces / non-developer mode
 
 **Prompts & voice**
 - [ ] Voice mode and read-aloud replies
 - [ ] Per-project prompt folders shared through git
-- [ ] Prompt chaining · draft persistence · Obsidian sync
+- [x] Draft persistence (unsent messages survive switching agents and restarts)
+- [ ] Prompt chaining · Obsidian sync
 
 **Monitoring**
 - [ ] Status island · context canary · adaptive mode

@@ -42,6 +42,8 @@ export interface Project {
   name: string
   path: string
   createdAt: number
+  /** more folders agents may read and edit (Claude/Codex --add-dir, Gemini --include-directories) */
+  folders?: string[]
 }
 
 export interface Agent {
@@ -118,7 +120,11 @@ export interface Schedule {
   agentId: string
   title: string
   prompt: string
-  kind: 'once' | 'hourly' | 'daily' | 'weekdays' | 'weekly'
+  kind: 'once' | 'hourly' | 'daily' | 'weekdays' | 'weekly' | 'monthly'
+  /** 1–31 (monthly; clamped to the month's last day) */
+  monthDay?: number
+  /** run a missed run once when Hive opens again (default true) */
+  catchUp?: boolean
   /** HH:MM (daily / weekdays / weekly), minute for hourly */
   time: string
   /** 0 = Sunday (weekly) */
@@ -198,6 +204,12 @@ export interface Trigger {
   /** {{payload}} = request body, {{event}} = X-GitHub-Event / X-Event header */
   prompt: string
   token: string
+  /** HMAC-SHA256 secret – when set, requests must be signed (GitHub "Secret", X-Hub-Signature-256) */
+  secret?: string
+  /** only these events (X-GitHub-Event / X-Event), comma separated */
+  events?: string
+  /** only when the payload contains this text */
+  match?: string
   enabled: boolean
   lastFired?: number
   fired?: number
