@@ -1,3 +1,15 @@
+## What's new in 0.2
+
+- **Plan review** – comment, edit or remove plan steps, then approve or send back
+- **Test guard** – failing tests go back to the agent automatically
+- **Daily budget** with alerts and auto-pause · **overlap warnings** between branches
+- **Workflows** – chain agents (PM → Dev → QA) · **Idea radar** · **Webhooks**
+- **Pick elements** in the preview · **draw on screenshots**
+- **Weekly report** · **session replay** · commits carry their conversation
+- **Secrets** (keychain, masked in terminals) · **databases** (read-only by default)
+- **SSH agents** on remote servers · **share** dev servers on a public URL
+- **Türkçe** interface · the office reacts (coffee during tests, confetti on merge)
+
 ## Download
 
 | System | File |
