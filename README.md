@@ -257,6 +257,15 @@ src/
 - [ ] Saved SSH servers, SSH tunnels, AWS SSM, Cloud SQL
 - [ ] CLI doctor
 
+**Needs testing on a real machine**
+- [ ] Codex `notify` hook (turn end) and Codex / Gemini session discovery
+- [ ] Quota switch: limit detection, next account, hand-over to another CLI
+- [ ] Clickable questions: keystrokes for single / multi select and "Other"
+- [ ] Figma, Linear, Jira, Notion and Azure DevOps API imports
+- [ ] Sign in per account (`CLAUDE_CONFIG_DIR` / `CODEX_HOME`), macOS keychain logins
+- [ ] Restore on launch, plan approve keystroke, dictation, ⌘⇧2 screenshots
+- [ ] SSH agents, tunnels and real database connections
+
 **Needs a server**
 - [ ] Mobile app · remote fleet · cloud agents · machine pool · remote control
 - [ ] Migration between machines · public backlog portal · developer email inbox · push API
