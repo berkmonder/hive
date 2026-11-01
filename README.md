@@ -282,6 +282,13 @@ src/
 - [ ] Read aloud with AI summaries · review dictated text before sending
 - [ ] Personal assistant reachable from phone / voice assistants (needs a server)
 
+**Every project, every machine, one window (fleet, no server)**
+- [ ] Each Hive exposes a token-protected endpoint (off by default, allow-list of peers)
+- [ ] Connect to other Hives directly over Tailscale / LAN or an SSH tunnel (`ssh -L`) – no relay server, traffic stays encrypted
+- [ ] "Machines" section in the sidebar: projects, agents and status per machine; offline machines greyed out
+- [ ] Step 1 – view: live status, agent list, watch a remote terminal
+- [ ] Step 2 – control: send messages, start / stop agents, answer questions and plans on remote machines
+
 **Needs testing on a real machine**
 - [ ] Codex `notify` hook (turn end) and Codex / Gemini session discovery
 - [ ] Quota switch: limit detection, next account, hand-over to another CLI
