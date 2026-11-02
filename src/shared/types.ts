@@ -330,6 +330,8 @@ export interface AppSettings {
   restoreSession: boolean
   /** language agents should answer in ('' = whatever you write) */
   agentLanguage: string
+  /** menu bar / tray icon with the agents' status */
+  trayIcon?: boolean
   /** QA browser tools for agents (browser_open, click, type, screenshot, console) */
   browserTools?: boolean
   /** look for a new Hive release on launch and every few hours */

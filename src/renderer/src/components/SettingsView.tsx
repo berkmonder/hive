@@ -448,6 +448,9 @@ function NotificationSettings() {
   const n = s.notify
   return (
     <Group title="Desktop notifications" hint="Clicking a notification opens that agent.">
+      <Row label="Menu bar icon" hint="Hive in the menu bar (next to Wi-Fi and volume): how many agents need you, the agent list with their status, pause all, quit.">
+        <Toggle on={s.trayIcon !== false} onChange={(v) => save({ trayIcon: v })} />
+      </Row>
       <Row label="Agent needs you" hint="Waiting for input or a permission."><Toggle on={n.waiting} onChange={(v) => save({ notify: { ...n, waiting: v } })} /></Row>
       <Row label="Agent finished"><Toggle on={n.done} onChange={(v) => save({ notify: { ...n, done: v } })} /></Row>
       <Row label="Agent crashed / exited with an error"><Toggle on={n.error} onChange={(v) => save({ notify: { ...n, error: v } })} /></Row>

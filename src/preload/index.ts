@@ -257,6 +257,7 @@ const api = {
   },
   onLimit: (cb: (agentId: string) => void) => on('agent:limit', cb),
   onToast: (cb: (text: string) => void) => on('toast', cb),
+  onOpenSettings: (cb: () => void) => on('open:settings', cb),
   onPauseSummary: (cb: (s: { agentId: string; name: string; text: string }[]) => void) => on('pause:summary', cb),
 
   onData: (cb: (p: { agentId: string; data: string }) => void) => on('agent:data', cb),

@@ -110,6 +110,8 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Quota switch:** when an account hits its usage limit, the conversation continues on the next account of that CLI – or is handed to another CLI.
 - **Per-CLI defaults:** model and reasoning effort for each CLI, overridable per agent; optional answer language for agents.
 - **Clone from Git:** project menu → *Clone from Git…* lists your GitHub / GitLab repos (`gh` / `glab`) or takes any URL and adds the clone as a project.
+- **Menu bar icon:** Hive sits next to Wi-Fi and volume – how many agents need you, every agent with its status (click to open), pause all, quit.
+- **Default account:** pick which Claude / Codex account every agent uses (*Settings → Agents & CLIs*); projects and agents can still override it.
 - **Updates:** Hive checks GitHub Releases and installs new versions itself (*Install & restart*); Settings → About & data → Updates.
 - **Restore on launch:** agents and dev servers that were running when you quit come back, with their conversations resumed.
 - **Remote agents over SSH:** run the CLI on a server (`user@host` + folder); hooks and Hive's MCP tools travel back through an SSH reverse tunnel.

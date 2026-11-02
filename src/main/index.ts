@@ -20,6 +20,7 @@ import { findSessions } from './otherclis'
 import { accountEnv, registerMore } from './more'
 import { utf8Locale } from './agents'
 import { registerUpdater } from './updater'
+import { createTray } from './tray'
 import { childrenOf, handleMcpHttp, initTeam, mcpArgsFor, codexMcpArgs, wouldCycle } from './team'
 import { Agent, AgentPatch, AgentRuntime, AppSettings, DevServer, Provider, NewAgentInput, Project, RoleDef, SavedPrompt } from '@shared/types'
 
@@ -595,6 +596,19 @@ app.whenReady().then(async () => {
   }, 8000)
   more = registerMore(fctx)
   registerUpdater(send)
+  createTray({
+    agents,
+    win: () => win,
+    show: () => {
+      if (!win || win.isDestroyed()) createWindow()
+      else {
+        if (win.isMinimized()) win.restore()
+        win.show()
+        win.focus()
+      }
+    },
+    send
+  })
   setTimeout(() => more?.restore(), 2500)
   const remote = registerRemote(fctx)
   app.on('before-quit', () => remote.dispose())
@@ -602,12 +616,20 @@ app.whenReady().then(async () => {
   agents.setRedactions(secretValues())
   createWindow()
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    // hidden QA browser windows do not count
+    if (!win || win.isDestroyed()) createWindow()
+    else win.show()
   })
 })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+app.on('browser-window-created', (_e, w) => {
+  // closing the main window quits on Windows / Linux even while QA browser windows exist
+  setImmediate(() => {
+    if (w === win) w.on('closed', () => process.platform !== 'darwin' && app.quit())
+  })
 })
 
 app.on('before-quit', () => {

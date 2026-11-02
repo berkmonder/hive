@@ -428,7 +428,9 @@ const TR: Record<string, string> = {
   "Default account": "Varsayılan hesap",
   "used by every Claude Code agent unless its project or the agent picks another": "projesi ya da ajan başka hesap seçmedikçe her Claude Code ajanı bunu kullanır",
   "Skip": "Atla",
-  "is available": "çıktı"
+  "is available": "çıktı",
+  "Menu bar icon": "Menü çubuğu simgesi",
+  "Hive in the menu bar (next to Wi-Fi and volume): how many agents need you, the agent list with their status, pause all, quit.": "Hive menü çubuğunda (Wi-Fi ve ses simgelerinin yanında): seni bekleyen ajan sayısı, durumlarıyla ajan listesi, hepsini duraklat, çık."
 }
 
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [
