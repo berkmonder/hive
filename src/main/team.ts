@@ -425,7 +425,7 @@ async function callTool(me: Agent, name: string, args: Record<string, unknown>):
       const a = member(me, args.agent)
       const n = Math.min(Math.max(Number(args.lines) || 60, 1), 400)
       const live = deps.agents.screenLines(a.id, n)
-      const out = live.length ? live : lastLines(deps.agents.buffer(a.id), n, 400)
+      const out = live.length ? live : lastLines((await deps.agents.buffer(a.id)).data, n, 400)
       return out.length ? out.join('\n') : `(no output from ${a.name} yet)`
     }
 

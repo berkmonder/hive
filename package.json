@@ -1,7 +1,7 @@
 {
   "name": "hive",
   "productName": "Hive",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Run multiple AI coding agents (Claude Code, Codex, Gemini...) side by side",
   "main": "./out/main/index.js",
   "author": "Fatih Burak İlk",
@@ -20,6 +20,7 @@
     "dist:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
+    "@xterm/addon-serialize": "^0.14.0",
     "@xterm/headless": "^6.0.0",
     "mongodb": "^7.8.0",
     "mysql2": "^3.24.6",

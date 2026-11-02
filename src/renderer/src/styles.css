@@ -1469,3 +1469,4 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .mock-opts input[type=checkbox] { width: auto; height: auto; }
 .mock-ed .srv-bar input { height: 32px; }
 .mock-ed .srv-bar .link-btn { align-self: center; }
+.terminal { overflow: hidden; }

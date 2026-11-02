@@ -13,6 +13,7 @@ import { homedir } from 'os'
 import type { HookEvent } from './hooks'
 import { exitReason, pickActivity } from '@shared/text'
 import { Terminal as Screen } from '@xterm/headless'
+import { SerializeAddon } from '@xterm/addon-serialize'
 
 const IDLE_MS = 4000
 const BUFFER_LIMIT = 300_000 // chars of scrollback kept for re-attaching terminals
@@ -22,6 +23,8 @@ interface Session {
   buffer: string
   /** headless terminal mirroring what the user sees, for reading the screen */
   screen: Screen
+  /** turns the headless screen into a clean snapshot for terminals that attach later */
+  ser: SerializeAddon
   activityDirty: boolean
   activity: string
   runtime: AgentRuntime
@@ -88,8 +91,20 @@ export class AgentManager {
     return [...this.runtimes.values()]
   }
 
-  buffer(agentId: string): string {
-    return this.sessions.get(agentId)?.buffer ?? this.lastBuffers.get(agentId) ?? ''
+  /**
+   * What a terminal that attaches now should show: a snapshot of the current screen,
+   * scrollback and terminal modes (not the raw byte history – replaying that into a
+   * terminal of another size garbles TUIs like Claude Code).
+   */
+  async buffer(agentId: string): Promise<{ data: string; cols: number; rows: number }> {
+    const s = this.sessions.get(agentId)
+    if (!s) return { data: this.lastBuffers.get(agentId) ?? '', cols: 0, rows: 0 }
+    await new Promise<void>((r) => s.screen.write('', () => r())) // let the parser catch up
+    try {
+      return { data: s.ser.serialize({ scrollback: 2000 }), cols: s.screen.cols, rows: s.screen.rows }
+    } catch {
+      return { data: s.buffer, cols: 0, rows: 0 }
+    }
   }
 
   private lastBuffers = new Map<string, string>()
@@ -143,8 +158,9 @@ export class AgentManager {
 
     const term = pty.spawn(file, args, {
       name: 'xterm-256color',
-      cols: 120,
-      rows: 32,
+      // start at the size the agent's view had last time, so the CLI draws for the right width
+      cols: this.sizes.get(agent.id)?.cols ?? 120,
+      rows: this.sizes.get(agent.id)?.rows ?? 32,
       cwd,
       env: {
         ...process.env,
@@ -161,7 +177,8 @@ export class AgentManager {
     const session: Session = {
       pty: term,
       buffer: '',
-      screen: new Screen({ cols: 120, rows: 32, scrollback: 300, allowProposedApi: true }),
+      screen: new Screen({ cols: this.sizes.get(agent.id)?.cols ?? 120, rows: this.sizes.get(agent.id)?.rows ?? 32, scrollback: 2000, allowProposedApi: true }),
+      ser: new SerializeAddon(),
       activityDirty: false,
       activity: '',
       hookDriven: false,
@@ -173,6 +190,7 @@ export class AgentManager {
       startedAt: Date.now(),
       runtime: { agentId: agent.id, status: 'working', running: true, lastActivity: Date.now() }
     }
+    session.screen.loadAddon(session.ser as unknown as Parameters<Screen['loadAddon']>[0])
     this.sessions.set(agent.id, session)
     this.setRuntime(session.runtime)
     // a task handed over on the command line counts as delivered now (gives the CLI time to start)
@@ -192,6 +210,12 @@ export class AgentManager {
     term.onExit(({ exitCode, signal }) => {
       if (this.sessions.get(agent.id) !== session) return // forgotten / replaced
       this.sessions.delete(agent.id)
+      let snapshot = ''
+      try {
+        snapshot = session.ser.serialize({ scrollback: 2000 })
+      } catch {
+        snapshot = session.buffer
+      }
       session.screen.dispose()
       const stopped = session.stopRequested || !!session.restartWith
       const quickResumeFail = session.resumed && exitCode !== 0 && !stopped && Date.now() - session.startedAt < 8000
@@ -200,7 +224,8 @@ export class AgentManager {
         : quickResumeFail
           ? 'no previous session to resume – starting a new one'
           : `process exited with code ${exitCode}${signal ? ` (signal ${signal})` : ''}`
-      this.lastBuffers.set(agent.id, session.buffer + `\r\n\x1b[90m[${note}]\x1b[0m\r\n`)
+      // leave the alternate screen of a TUI so the note is readable, and reset the modes it set
+      this.lastBuffers.set(agent.id, snapshot + `\x1b[?1049l\x1b[?25h\x1b[0m\r\n\x1b[90m[${note}]\x1b[0m\r\n`)
 
       const status: AgentStatus = stopped ? 'idle' : exitCode === 0 ? 'done' : 'error'
       this.setRuntime({
@@ -356,9 +381,11 @@ export class AgentManager {
     if (data.includes('\r') && s.runtime.status === 'waiting') this.setStatus(agentId, 'working')
   }
 
+  private sizes = new Map<string, { cols: number; rows: number }>()
   resize(agentId: string, cols: number, rows: number): void {
+    if (cols > 0 && rows > 0) this.sizes.set(agentId, { cols, rows })
     const s = this.sessions.get(agentId)
-    if (s && cols > 0 && rows > 0) {
+    if (s && cols > 0 && rows > 0 && (s.pty.cols !== cols || s.pty.rows !== rows)) {
       s.pty.resize(cols, rows)
       s.screen.resize(cols, rows)
     }
