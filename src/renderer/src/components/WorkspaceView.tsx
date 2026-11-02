@@ -11,7 +11,14 @@ const newId = (): string => Math.random().toString(36).slice(2, 10)
 
 /** Project memory, skills, shared MCP servers and the process watchdog. */
 export function WorkspaceView() {
-  const [tab, setTab] = useState<Tab>('memory')
+  const [tab, setTab] = useState<Tab>(() => (useStore.getState().subTab as Tab) || 'memory')
+  const sub = useStore((s) => s.subTab)
+  useEffect(() => {
+    if (sub && ['memory', 'skills', 'mcp', 'procs', 'auto', 'secrets', 'db'].includes(sub)) {
+      setTab(sub as Tab)
+      useStore.setState({ subTab: null })
+    }
+  }, [sub])
   const leftovers = useLeftovers()
   return (
     <div className="board-view ws">

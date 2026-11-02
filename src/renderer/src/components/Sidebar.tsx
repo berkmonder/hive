@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import type { Agent, AgentStatus } from '@shared/types'
 import { useStore } from '../store'
+import { decodeAgent } from '@shared/library'
 import { CloneRepoModal, ImportSessionsModal } from './More'
 import { Character } from './Character'
 import { Icon, STATUS_LABEL, timeAgo } from './common'
@@ -77,14 +78,11 @@ export function Sidebar() {
       <div className="card search">
         <Icon name="search" size={16} />
         <input placeholder="Search agents…" value={query} onChange={(e) => setQuery(e.target.value)} />
-      </div>
-
-      <div className="group-mode">
-        <button className={groupBy === 'status' ? 'on' : ''} onClick={() => setGroupBy('status')}>By status</button>
-        <button className={groupBy === 'team' ? 'on' : ''} onClick={() => setGroupBy('team')}>
-          <Icon name="users" size={12} /> By team
+        <button className={`icon-btn ${groupBy === 'team' ? 'on' : ''}`} title={groupBy === 'team' ? 'Grouped by team – click to group by status' : 'Grouped by status – click to group by team'} onClick={() => setGroupBy(groupBy === 'team' ? 'status' : 'team')}>
+          <Icon name="users" size={15} />
         </button>
       </div>
+
 
       <div className="agent-list">
         {project && agents.length === 0 && <p className="muted small pad">No agents yet.</p>}
@@ -110,11 +108,7 @@ export function Sidebar() {
         )}
       </div>
 
-      <div className="sidebar-foot">
-        <button className="btn-new" disabled={!project} onClick={() => setShowNewAgent(true)}>
-          <Icon name="plus" /> New agent
-        </button>
-      </div>
+      <Dock onImport={() => setImporting(true)} onClone={() => setCloning(true)} />
     </aside>
   )
 }
@@ -203,6 +197,107 @@ function AgentRow({ agent: a, depth = 0, lead }: { agent: Agent; depth?: number;
           <Icon name="more" size={14} />
         </button>
       </span>
+    </div>
+  )
+}
+
+/** Bottom dock: live preview, automations, team, new agent, tools and knowledge shortcuts. */
+function Dock({ onImport, onClone }: { onImport: () => void; onClone: () => void }) {
+  const st = useStore()
+  const { app, selectedProjectId: pid, runtimes, serverRuntimes, unread } = st
+  const [menu, setMenu] = useState(false)
+  const [paste, setPaste] = useState<string | null>(null)
+  const addShared = async (text: string): Promise<void> => {
+    if (!pid) return
+    try {
+      const a = decodeAgent(text)
+      if (a.instructions && !app.roles.some((r) => r.name.toLowerCase() === a.role.toLowerCase()))
+        await window.api.library.saveRole({ id: `r-${Math.random().toString(36).slice(2, 9)}`, name: a.role, color: a.color, instructions: a.instructions })
+      const created = await window.api.createAgent({ projectId: pid, name: a.name, role: a.role, color: a.color, providerId: app.providers.some((p) => p.id === a.providerId) ? a.providerId : app.settings.defaultProviderId, initialPrompt: a.initialPrompt, useWorktree: false })
+      setPaste(null)
+      st.focusAgent(created.id)
+      st.toast(`Added ${a.name}`, 'success')
+    } catch (e) {
+      st.toast(`Could not add the agent: ${(e as Error).message}`, 'error')
+    }
+  }
+  const agents = app.agents.filter((a) => a.projectId === pid)
+  const ids = new Set(agents.map((a) => a.id))
+  const running = agents.filter((a) => runtimes[a.id]?.running).length
+  const servers = app.servers.filter((s) => s.projectId === pid)
+  const live = servers.map((s) => ({ s, r: serverRuntimes[s.id] })).find((x) => x.r?.running)
+  const liveUrl = live ? live.s.url || live.r?.url : undefined
+  const autos = app.schedules.filter((x) => ids.has(x.agentId)).length + app.triggers.filter((x) => ids.has(x.agentId)).length + app.workflows.filter((w) => w.projectId === pid).length
+  const unreadIds = agents.filter((a) => unread[a.id]).map((a) => a.id)
+  const ideas = app.ideas.filter((i) => i.projectId === pid).length
+  const hasMemory = !!(pid && app.memory[pid]?.trim())
+  const btn = (icon: Parameters<typeof Icon>[0]['name'], title: string, onClick: () => void, badge?: number | string, dot?: boolean, on?: boolean) => (
+    <button className={`dock-btn ${on ? 'on' : ''}`} title={title} disabled={!pid} onClick={onClick}>
+      <Icon name={icon} size={17} />
+      {badge ? <span className="dock-badge">{badge}</span> : null}
+      {dot && <i className="dock-dot" />}
+    </button>
+  )
+  return (
+    <div className="dock">
+      {liveUrl && (
+        <button className="dock-live" title="Open the live preview" onClick={() => st.setView('servers')}>
+          <i className="live-dot" /> <span>Live preview</span> <span className="mono muted">{liveUrl.replace(/^https?:\/\//, '')}</span>
+          <span className="spacer" />
+          <span title="Open in browser" onClick={(e) => { e.stopPropagation(); window.api.openLink(liveUrl) }}><Icon name="external" size={13} /></span>
+        </button>
+      )}
+      <div className="dock-row">
+        <button className="dock-pill" disabled={!pid} title="Schedules, webhooks and workflows" onClick={() => st.openTab('board', 'schedules')}>
+          <Icon name="clock" size={15} /> <span>Automations</span>{autos > 0 && <sup>{autos}</sup>}
+        </button>
+        <div className="dock-new">
+          <button className="dock-new-main" disabled={!pid} onClick={() => st.setShowNewAgent(true)}><Icon name="plus" size={15} /> New agent</button>
+          <button className="dock-new-more" disabled={!pid} title="More ways to add an agent" onClick={() => setMenu(!menu)}><span className={`chev ${menu ? '' : 'closed'}`}><Icon name="chevronUp" size={13} /></span></button>
+          {menu && (
+            <div className="dock-menu" onMouseLeave={() => setMenu(false)}>
+              <button onClick={() => { setMenu(false); st.setShowNewAgent(true) }}><Icon name="plus" size={14} /> New agent</button>
+              <button onClick={() => { setMenu(false); onImport() }}><Icon name="terminal" size={14} /> Continue a terminal session…</button>
+              <button onClick={() => { setMenu(false); st.setShowLibrary('roles') }}><Icon name="book" size={14} /> Roles & prompts…</button>
+              <button onClick={() => { setMenu(false); setPaste('') }}><Icon name="inbox" size={14} /> Paste a shared agent…</button>
+              <button onClick={() => { setMenu(false); onClone() }}><Icon name="github" size={14} /> New project from Git…</button>
+            </div>
+          )}
+        </div>
+      </div>
+      {paste !== null && (
+        <div className="backdrop" onMouseDown={() => setPaste(null)}>
+          <div className="modal small-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h2>Paste a shared agent</h2>
+            <p className="muted small">A teammate copies an agent with right-click → <b>Share agent</b>. Its role comes along if you don't have it yet.</p>
+            <textarea rows={5} className="mono" autoFocus value={paste} placeholder="hive-agent:…" onChange={(e) => setPaste(e.target.value)} />
+            <div className="modal-foot">
+              <button className="btn ghost" onClick={() => setPaste(null)}>Cancel</button>
+              <button className="btn" disabled={!paste.trim()} onClick={() => addShared(paste)}>Add agent</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="dock-groups">
+        <div className="dock-group">
+          <div className="dock-icons">
+            {btn('terminal', 'Terminal grid – running agents', () => st.setView('grid'), running || undefined, false, st.view === 'grid')}
+            {btn('activity', 'Dev servers & live preview', () => st.setView('servers'), undefined, !!live, st.view === 'servers')}
+            {btn('inbox', 'Idea radar', () => st.openTab('board', 'ideas'), ideas || undefined)}
+            {btn('bell', unreadIds.length ? 'Open the next unread reply' : 'No unread replies', () => unreadIds[0] && st.focusAgent(unreadIds[0]), unreadIds.length || undefined)}
+          </div>
+          <span className="dock-label tools">Tools</span>
+        </div>
+        <div className="dock-group">
+          <div className="dock-icons">
+            {btn('book', 'Prompt library', () => st.setShowLibrary('prompts'), app.prompts.length || undefined)}
+            {btn('zap', 'Skills', () => st.openTab('project', 'skills'), app.skills.length || undefined)}
+            {btn('brain', 'Project memory', () => st.openTab('project', 'memory'), undefined, hasMemory)}
+            {btn('plug', 'MCP servers', () => st.openTab('project', 'mcp'), app.mcpServers.filter((m) => m.enabled).length || undefined)}
+          </div>
+          <span className="dock-label knowledge">Knowledge</span>
+        </div>
+      </div>
     </div>
   )
 }

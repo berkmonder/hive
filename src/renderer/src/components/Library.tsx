@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { expandRefs, fillPrompt, type RoleDef, type SavedPrompt } from '@shared/library'
+import { decodeRoles, encodeRoles, expandRefs, fillPrompt, ROLE_GALLERY, type RoleDef, type SavedPrompt } from '@shared/library'
 import type { Agent } from '@shared/types'
 import { useStore } from '../store'
 import { Icon, cleanError } from './common'
@@ -161,6 +161,25 @@ function RolesEditor({ items, toast }: { items: RoleDef[]; toast: (t: string, k?
     await window.api.library.saveRole({ ...draft, name: draft.name.trim() })
     toast(users ? `Role saved – restart its ${users} agent(s) to apply the new instructions` : 'Role saved', 'success')
   }
+  const [gallery, setGallery] = useState(false)
+  const [paste, setPaste] = useState<string | null>(null)
+  const share = (rs: RoleDef[]): void => {
+    window.api.copyText(encodeRoles(rs)).then(() => toast(`${rs.length === 1 ? `“${rs[0].name}”` : `${rs.length} roles`} copied – paste it to a teammate (Import roles)`, 'success'))
+  }
+  const importText = async (text: string): Promise<void> => {
+    try {
+      const list = decodeRoles(text)
+      if (!list.length) throw new Error('No roles in that text')
+      for (const r of list) {
+        const ex = items.find((x) => x.name.toLowerCase() === r.name.toLowerCase())
+        await window.api.library.saveRole({ id: ex?.id ?? uid('r'), ...r })
+      }
+      toast(`Imported ${list.length} role${list.length === 1 ? '' : 's'}`, 'success')
+      setPaste(null)
+    } catch (e) {
+      toast(`Could not read roles: ${(e as Error).message}`, 'error')
+    }
+  }
   const add = async (): Promise<void> => {
     const r = { id: uid('r'), name: 'New role', color: '#8b7cf6', instructions: '' }
     await window.api.library.saveRole(r)
@@ -171,6 +190,11 @@ function RolesEditor({ items, toast }: { items: RoleDef[]; toast: (t: string, k?
     <div className="lib-body">
       <aside className="lib-list">
         <button className="btn ghost sm" onClick={add}><Icon name="plus" size={13} /> New role</button>
+        <div className="row" style={{ gap: 6 }}>
+          <button className="btn ghost sm" style={{ flex: 1 }} onClick={() => setGallery(true)}><Icon name="users" size={13} /> Browse roles</button>
+          <button className="btn ghost sm" style={{ flex: 1 }} title="Paste roles a teammate shared" onClick={() => setPaste('')}><Icon name="inbox" size={13} /> Import</button>
+        </div>
+        <button className="link-btn" onClick={() => share(items)}>Share all {items.length} roles</button>
         {items.map((r) => (
           <button key={r.id} className={`lib-item ${r.id === sel ? 'on' : ''}`} onClick={() => setSel(r.id)}>
             <b><i className="dot" style={{ background: r.color }} /> {r.name}</b>
@@ -198,10 +222,48 @@ function RolesEditor({ items, toast }: { items: RoleDef[]; toast: (t: string, k?
               setSel(items.find((r) => r.id !== draft.id)?.id ?? null)
             }}><Icon name="trash" size={13} /> Delete</button>
             <div className="spacer" />
+            <button className="btn ghost" onClick={() => share([draft])}><Icon name="copy" size={13} /> Share</button>
             <button className="btn" disabled={!dirty} onClick={save}>Save</button>
           </div>
         </section>
       ) : <section className="lib-edit muted">Create your first role.</section>}
+      {gallery && (
+        <div className="backdrop" onMouseDown={() => setGallery(false)}>
+          <div className="modal role-gallery" onMouseDown={(e) => e.stopPropagation()}>
+            <h2>Role gallery</h2>
+            <p className="muted small">Ready-made specialists – add the ones you need, then tweak their instructions.</p>
+            <div className="rg-grid">
+              {ROLE_GALLERY.map((r) => {
+                const have = items.some((x) => x.name.toLowerCase() === r.name.toLowerCase())
+                return (
+                  <div key={r.id} className="rg-card" style={{ ['--agent' as string]: r.color }}>
+                    <b><i className="dot" style={{ background: r.color }} /> {r.name}</b>
+                    <p>{r.instructions}</p>
+                    <button className="btn ghost sm" disabled={have} onClick={async () => {
+                      await window.api.library.saveRole({ ...r, id: uid('r') })
+                      toast(`Added ${r.name}`, 'success')
+                    }}>{have ? 'Added ✓' : <><Icon name="plus" size={12} /> Add</>}</button>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="modal-foot"><button className="btn" onClick={() => setGallery(false)}>Done</button></div>
+          </div>
+        </div>
+      )}
+      {paste !== null && (
+        <div className="backdrop" onMouseDown={() => setPaste(null)}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h2>Import roles</h2>
+            <p className="muted small">Paste the text a teammate copied with <b>Share</b> (starts with <span className="mono">hive-roles:</span>) or role JSON. Roles with the same name are updated.</p>
+            <textarea rows={6} className="mono" autoFocus value={paste} onChange={(e) => setPaste(e.target.value)} />
+            <div className="modal-foot">
+              <button className="btn ghost" onClick={() => setPaste(null)}>Cancel</button>
+              <button className="btn" disabled={!paste.trim()} onClick={() => importText(paste)}>Import</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

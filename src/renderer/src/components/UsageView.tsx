@@ -34,6 +34,7 @@ export function UsageView() {
   const { report, refresh } = useUsage(scope === 'project' ? selectedProjectId : null, 15000)
   const [hover, setHover] = useState<{ x: number; y: number; text: string } | null>(null)
   const [showReport, setReport] = useState(false)
+  const [chart, setChart] = useState<'cost' | 'prompts'>('cost')
   const days = useMemo(() => lastDays(14), [])
   const today = days[days.length - 1]
 
@@ -52,7 +53,10 @@ export function UsageView() {
   const cacheRead = agents.reduce((s, x) => s + x.u.cacheRead, 0)
   const promptTok = agents.reduce((s, x) => s + x.u.input + x.u.cacheRead + x.u.cacheWrite, 0)
   const hitRate = promptTok ? Math.round((cacheRead / promptTok) * 100) : null
-  const daily = days.map((d) => ({ d, v: agents.reduce((s, x) => s + (x.u.days[d] ?? 0), 0) }))
+  const prompts = agents.reduce((s, x) => s + (x.u.prompts ?? 0), 0)
+  const activeDays = new Set(agents.flatMap((x) => Object.keys(x.u.promptDays ?? {}))).size
+  const daily = days.map((d) => ({ d, v: agents.reduce((s, x) => s + (chart === 'cost' ? (x.u.days[d] ?? 0) : (x.u.promptDays?.[d] ?? 0)), 0) }))
+  const fmtV = (v: number): string => (chart === 'cost' ? fmtUsd(v) : `${Math.round(v)} prompt${Math.round(v) === 1 ? '' : 's'}`)
   const maxDay = Math.max(...daily.map((x) => x.v), 0.0001)
   const maxAgent = Math.max(...agents.map((x) => x.u.cost), 0.0001)
   const noData = agents.every((x) => x.u.sessions === 0)
@@ -75,6 +79,7 @@ export function UsageView() {
         <Stat label="Today" value={fmtUsd(todayCost)} />
         <Stat label="Last 7 days" value={fmtUsd(weekCost)} />
         <Stat label="All time (agents)" value={fmtUsd(total)} sub={`${fmtTok(tokens)} tokens`} />
+        <Stat label="Prompts" value={String(prompts)} sub={`${activeDays} active day${activeDays === 1 ? '' : 's'} · ${agents.filter((x) => x.u.prompts).length} agents`} />
         <Stat label="Cache hit rate" value={hitRate === null ? '–' : `${hitRate}%`} sub="prompt tokens read from cache" />
         <Stat label="Time working" value={fmtDur(work)} sub={`${agents.filter((x) => x.u.workMs > 0).length} agents`} />
         <Stat label="All Claude Code in these folders" value={fmtUsd(report.folder.cost)} sub={`${report.folder.sessions} sessions, incl. outside Hive`} />
@@ -82,18 +87,23 @@ export function UsageView() {
 
       <section className="usage-card">
         <div className="uc-head">
-          <b>Cost per day</b>
+          <b>{chart === 'cost' ? 'Cost per day' : 'Prompts per day'}</b>
           <span className="muted small">last 14 days · agents in Hive</span>
+          <div className="spacer" />
+          <div className="seg sm">
+            <button className={chart === 'cost' ? 'on' : ''} style={{ width: 'auto', padding: '0 10px' }} onClick={() => setChart('cost')}>Cost</button>
+            <button className={chart === 'prompts' ? 'on' : ''} style={{ width: 'auto', padding: '0 10px' }} onClick={() => setChart('prompts')}>Activity</button>
+          </div>
         </div>
         <div className="daychart" onMouseLeave={() => setHover(null)}>
           {daily.map(({ d, v }) => (
             <div key={d} className="dc-col"
-              onMouseMove={(e) => setHover({ x: e.clientX, y: e.clientY, text: `${new Date(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtUsd(v)}` })}>
+              onMouseMove={(e) => setHover({ x: e.clientX, y: e.clientY, text: `${new Date(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtV(v)}` })}>
               <div className="dc-bar" style={{ height: `${Math.max(v > 0 ? 3 : 0, (v / maxDay) * 100)}%` }} />
               <span className={`dc-label ${d === today ? 'today' : ''}`}>{d === today ? 'Today' : new Date(d).getDate()}</span>
             </div>
           ))}
-          <div className="dc-max muted small">{fmtUsd(maxDay)}</div>
+          <div className="dc-max muted small">{fmtV(maxDay)}</div>
         </div>
       </section>
 
@@ -105,7 +115,7 @@ export function UsageView() {
         <table className="usage-table">
           <thead>
             <tr>
-              <th>Agent</th><th>Sessions</th><th>Input</th><th>Output</th><th>Cache read</th><th>Cache write</th><th>Working</th><th className="num">Cost</th><th className="bar-col" />
+              <th>Agent</th><th>Sessions</th><th>Prompts</th><th>Input</th><th>Output</th><th>Cache read</th><th>Cache write</th><th>Working</th><th className="num">Cost</th><th className="bar-col" />
             </tr>
           </thead>
           <tbody>
@@ -153,6 +163,7 @@ function Row({ id, name, role, color, u, max, onHover }: { id: string; name: str
         </div>
       </td>
       <td>{u.sessions}</td>
+      <td>{u.prompts ?? 0}</td>
       <td>{fmtTok(u.input)}</td>
       <td>{fmtTok(u.output)}</td>
       <td>{fmtTok(u.cacheRead)}{u.input + u.cacheRead + u.cacheWrite > 0 && <small className="muted"> · {Math.round((u.cacheRead / (u.input + u.cacheRead + u.cacheWrite)) * 100)}%</small>}</td>

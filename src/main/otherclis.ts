@@ -173,7 +173,7 @@ function parseCodex(path: string): Parsed {
       if (last) context = { used: last.input_tokens ?? 0, window: p.info.model_context_window ?? 272_000, model }
     }
   }
-  return { conv: { items: items.slice(-400), context }, usage }
+  return { conv: { items, context }, usage }
 }
 
 function parseGemini(path: string): Parsed {
@@ -217,7 +217,7 @@ function parseGemini(path: string): Parsed {
       }
     }
   }
-  return { conv: { items: items.slice(-400), context }, usage }
+  return { conv: { items, context }, usage }
 }
 
 export function readOther(path: string): Parsed {

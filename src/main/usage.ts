@@ -13,6 +13,7 @@ import type { Agent } from '@shared/types'
 
 import type { AgentUsage, Tokens, UsageEntry, UsageReport } from '@shared/usage'
 import { kindOf, readOther } from './otherclis'
+import { readConversation } from './transcript'
 export type { UsageReport } from '@shared/usage'
 
 // USD per million tokens: [input, output, cache write (5m), cache read]
@@ -105,9 +106,19 @@ function transcriptsForFolder(folder: string): string[] {
 export async function usageReport(agents: Agent[], folders: string[], liveWork: (id: string) => number): Promise<UsageReport> {
   const out: AgentUsage[] = []
   for (const a of agents) {
-    const u: AgentUsage = { agentId: a.id, ...zero(), sessions: 0, messages: 0, workMs: (a.workMs ?? 0) + liveWork(a.id), models: [], days: {} }
+    const u: AgentUsage = { agentId: a.id, ...zero(), sessions: 0, messages: 0, workMs: (a.workMs ?? 0) + liveWork(a.id), models: [], days: {}, prompts: 0, promptDays: {} }
     const models = new Set<string>()
     for (const t of a.sessions ?? []) {
+      try {
+        for (const it of (await readConversation(t, 100_000)).items) {
+          if (it.kind !== 'user' || !it.at) continue
+          u.prompts++
+          const d = dayOf(new Date(it.at).toISOString())
+          u.promptDays[d] = (u.promptDays[d] ?? 0) + 1
+        }
+      } catch {
+        /* unreadable transcript */
+      }
       const entries = await parseTranscript(t)
       if (!entries.length) continue
       u.sessions++

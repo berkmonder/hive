@@ -21,6 +21,9 @@ interface Store {
   focusAgent: (id: string | null) => void
   /** agents that finished a turn you have not looked at yet */
   unread: Record<string, boolean>
+  /** tab to open inside the next view (Workspace / Backlog) */
+  subTab: string | null
+  openTab: (view: 'project' | 'board', tab: string) => void
   setView: (v: View) => void
   setShowNewAgent: (v: boolean) => void
   menu: { x: number; y: number; agentId: string } | null
@@ -226,6 +229,11 @@ export const useStore = create<Store>((set, get) => ({
   },
   selectProject: (id) => set({ selectedProjectId: id, view: get().view === 'focus' ? 'room' : get().view, focusedAgentId: null }),
   unread: {},
+  subTab: null,
+  openTab: (view, tab) => {
+    set({ subTab: tab })
+    get().setView(view)
+  },
   focusAgent: (id) => {
     const u = get().unread
     set({ focusedAgentId: id, view: id ? 'focus' : get().lastOverview, ...(id && u[id] ? { unread: Object.fromEntries(Object.entries(u).filter(([k]) => k !== id)) } : {}) })

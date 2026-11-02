@@ -520,3 +520,79 @@ export function ImportSessionsModal({ onClose }: { onClose: () => void }) {
     </div>
   )
 }
+
+/* ---------- "a new version is available" ---------- */
+type Upd = NonNullable<Awaited<ReturnType<typeof window.api.updates.check>>>
+export async function installUpdate(): Promise<void> {
+  try {
+    const r = await window.api.updates.install()
+    if (r === 'installing') toast('Installing the update – Hive restarts in a moment', 'success')
+    else if (r === 'opened') toast('Download the new version from the release page', 'info')
+  } catch (e) {
+    err(e)
+  }
+}
+export function UpdateBanner() {
+  const [u, setU] = useState<Upd | null>(null)
+  const [progress, setProgress] = useState<number | null>(null)
+  const [notes, setNotes] = useState(false)
+  useEffect(() => {
+    const a = window.api.updates.onAvailable(setU)
+    const b = window.api.updates.onProgress(setProgress)
+    return () => {
+      a()
+      b()
+    }
+  }, [])
+  if (!u) return null
+  const what = u.notes.split(/\n## Download/)[0].trim()
+  return (
+    <div className="update-bar">
+      <Icon name="sparkle" size={14} />
+      <span><b>Hive {u.version}</b> is available</span>
+      {what && <button className="link-btn" onClick={() => setNotes(!notes)}>What's new</button>}
+      <div className="spacer" />
+      {progress !== null && progress < 1 ? (
+        <span className="upd-progress"><i style={{ width: `${Math.round(progress * 100)}%` }} /> {Math.round(progress * 100)}%</span>
+      ) : progress === 1 ? (
+        <span className="muted small">Restarting…</span>
+      ) : (
+        <>
+          <button className="btn ghost sm" onClick={() => { window.api.updates.skip(u.version); setU(null) }}>Skip this version</button>
+          <button className="btn ghost sm" onClick={() => setU(null)}>Later</button>
+          <button className="btn sm" onClick={() => { setProgress(0); installUpdate().finally(() => setProgress((p) => (p === 1 ? 1 : null))) }}>
+            {u.canInstall ? 'Install & restart' : 'Download'}
+          </button>
+        </>
+      )}
+      {notes && what && <div className="update-notes md-body" onClick={() => setNotes(false)}><pre>{what}</pre></div>}
+    </div>
+  )
+}
+
+export function UpdateSettings() {
+  const s = useStore((st) => st.app.settings)
+  const [state, setState] = useState<string>('')
+  const [found, setFound] = useState<Upd | null>(null)
+  const check = (): void => {
+    setState('Checking…')
+    window.api.updates.check().then((u) => {
+      setFound(u)
+      setState(u ? `Hive ${u.version} is available` : 'Hive is up to date')
+    }).catch((e) => setState(cleanError(e)))
+  }
+  return (
+    <section className="set-group">
+      <header><h2>Updates</h2><p className="muted small">New versions come from GitHub Releases. Installing downloads the right file for this computer, swaps it in and restarts Hive.</p></header>
+      <div className="set-rows">
+        <div className="set-row"><div className="set-label"><b>Check automatically</b><span>On launch and every 6 hours{s.lastUpdateCheck ? ` · last check ${new Date(s.lastUpdateCheck).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}` : ''}</span></div>
+          <div className="set-control"><input type="checkbox" checked={s.autoUpdateCheck !== false} onChange={(e) => window.api.settings.save({ autoUpdateCheck: e.target.checked })} /></div></div>
+        <div className="set-row"><div className="set-label"><b>{state || 'Check now'}</b></div>
+          <div className="set-control">
+            {found && <button className="btn sm" onClick={installUpdate}>{found.canInstall ? 'Install & restart' : 'Download'}</button>}
+            <button className="btn ghost sm" onClick={check}><Icon name="refresh" size={13} /> Check for updates</button>
+          </div></div>
+      </div>
+    </section>
+  )
+}

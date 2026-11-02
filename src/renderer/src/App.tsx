@@ -16,7 +16,7 @@ import { SplitView } from './components/SplitView'
 import { Palette } from './components/Palette'
 import { AskBubble, MorphMenu } from './components/AgentExtras'
 import { PlanReviewModal } from './components/PlanReview'
-import { PauseSummary, QuestionModal } from './components/More'
+import { PauseSummary, QuestionModal, UpdateBanner } from './components/More'
 import { ReplayModal } from './components/Insights'
 import { setLanguage } from './i18n'
 import { LibraryModal, SendPromptPicker } from './components/Library'
@@ -94,6 +94,7 @@ export default function App() {
 
   return (
     <div className={`app ${platform === 'darwin' ? 'mac' : ''}`}>
+      <UpdateBanner />
       <header className="topbar">
         <div className="brand">
           <div className="logo"><HiveLogo size={26} /></div>

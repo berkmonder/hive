@@ -3,7 +3,7 @@ import type { UsageReport } from '@shared/usage'
 import type { Conversation } from '@shared/chat'
 import type { ProcInfo } from '@shared/procs'
 import type { ReplayTurn, WeeklyReport } from '@shared/insights'
-import type { AgentRuntime, AppState, GitSummary, NewAgentInput, Agent, AgentPatch, Project, TeamEvent, RoleDef, SavedPrompt, DevServer, ServerRuntime, AppSettings, Provider, Task, TaskStatus, Schedule, Skill, McpServerDef, ProjectSettings, TestResult, Workflow, WorkflowRun, PlanReview, Conflict, Trigger, PickedElement, DbConnection, Account, AgentQuestion } from '@shared/types'
+import type { AgentRuntime, AppState, GitSummary, NewAgentInput, Agent, AgentPatch, Project, TeamEvent, RoleDef, SavedPrompt, DevServer, ServerRuntime, AppSettings, Provider, Task, TaskStatus, Schedule, Skill, McpServerDef, ProjectSettings, TestResult, Workflow, WorkflowRun, PlanReview, Conflict, Trigger, PickedElement, DbConnection, Account, AgentQuestion, UpdateInfo } from '@shared/types'
 
 function on<T>(channel: string, cb: (payload: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, payload: T): void => cb(payload)
@@ -240,6 +240,14 @@ const api = {
     list: (projectId: string): Promise<{ path: string; kind: 'claude' | 'codex'; at: number; size: number; title: string }[]> => ipcRenderer.invoke('sessions:external', projectId),
     adopt: (projectId: string, path: string, kind: 'claude' | 'codex', name?: string): Promise<string> => ipcRenderer.invoke('sessions:adopt', projectId, path, kind, name)
   },
+  updates: {
+    check: (): Promise<UpdateInfo | null> => ipcRenderer.invoke('update:check'),
+    install: (): Promise<'opened' | 'installing' | undefined> => ipcRenderer.invoke('update:install'),
+    skip: (version: string): Promise<void> => ipcRenderer.invoke('update:skip', version),
+    onAvailable: (cb: (u: UpdateInfo) => void) => on('update:available', cb),
+    onProgress: (cb: (p: number) => void) => on('update:progress', cb)
+  },
+  showQaBrowser: (agentId: string): Promise<boolean> => ipcRenderer.invoke('qa:show', agentId),
   advisor: (projectId: string, task: string): Promise<{ agentId: string; reason: string }> => ipcRenderer.invoke('advisor:suggest', projectId, task),
   questions: {
     list: (): Promise<AgentQuestion[]> => ipcRenderer.invoke('questions:list'),

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
+import { encodeAgent } from '@shared/library'
 import { agentCommands } from './agentCommands'
 import { Icon } from './common'
 import { Character } from './Character'
@@ -74,6 +75,7 @@ export function ContextMenu() {
       : []),
     ...(agent.providerId === 'claude' ? ([{ label: 'Restart in plan mode', icon: 'list', run: c.planMode }] as Item[]) : []),
     { label: 'Run tests now', icon: 'check', run: c.runTests },
+    { label: 'Show QA browser', icon: 'monitor', run: () => window.api.showQaBrowser(agent.id).then((ok) => !ok && useStore.getState().toast(`${agent.name} has not opened the QA browser yet`, 'info')) },
     { label: 'Change role…', icon: 'restart', run: () => c.morph(menu.x, menu.y) },
     { label: 'Schedule a task…', icon: 'clock', run: c.schedule },
     ...(running ? ([{ label: 'Pause after this turn', icon: 'pause', run: c.pause }] as Item[]) : []),
@@ -81,6 +83,12 @@ export function ContextMenu() {
     { label: 'Edit…', icon: 'edit', run: c.edit },
     { label: 'Add team member…', icon: 'userPlus', run: () => useStore.getState().addMember(agent.id) },
     { label: 'Duplicate', icon: 'copy', run: c.duplicate },
+    { label: 'Share agent (copy)', icon: 'copy', run: () => {
+      const st = useStore.getState()
+      const role = st.app.roles.find((r) => r.name === agent.role)
+      window.api.copyText(encodeAgent({ name: agent.name, role: agent.role, color: agent.color, providerId: agent.providerId, initialPrompt: agent.initialPrompt, instructions: role?.instructions }))
+        .then(() => st.toast(`${agent.name} copied – a teammate adds it with New agent ▴ → Paste a shared agent`, 'success'))
+    } },
     { label: 'Open folder', icon: 'folder', run: c.openFolder },
     { label: 'Copy path', icon: 'copy', run: c.copyPath },
     '-',

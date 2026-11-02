@@ -25,7 +25,10 @@ function toolSummary(name: string, input: Record<string, unknown> = {}): string 
 }
 
 export async function readConversation(path: string, limit = 400): Promise<Conversation> {
-  if (kindOf(path) !== 'claude') return readOther(path).conv
+  if (kindOf(path) !== 'claude') {
+    const c = readOther(path).conv
+    return { ...c, items: c.items.slice(-limit) }
+  }
   let st
   try {
     st = statSync(path)
@@ -33,7 +36,7 @@ export async function readConversation(path: string, limit = 400): Promise<Conve
     return { items: [], context: null }
   }
   const hit = cache.get(path)
-  if (hit && hit.size === st.size && hit.mtime === st.mtimeMs) return hit.conv
+  if (hit && hit.size === st.size && hit.mtime === st.mtimeMs) return { ...hit.conv, items: hit.conv.items.slice(-limit) }
   const fh = await open(path, 'r')
   const text = (await fh.readFile()).toString('utf8')
   await fh.close()
@@ -98,7 +101,7 @@ export async function readConversation(path: string, limit = 400): Promise<Conve
       }
     }
   }
-  const conv: Conversation = { items: items.slice(-limit), context }
+  const conv: Conversation = { items, context }
   cache.set(path, { size: st.size, mtime: st.mtimeMs, conv })
-  return conv
+  return { ...conv, items: items.slice(-limit) }
 }

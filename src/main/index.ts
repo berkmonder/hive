@@ -19,6 +19,7 @@ import { registerRemote } from './remote'
 import { findSessions } from './otherclis'
 import { accountEnv, registerMore } from './more'
 import { utf8Locale } from './agents'
+import { registerUpdater } from './updater'
 import { childrenOf, handleMcpHttp, initTeam, mcpArgsFor, codexMcpArgs, wouldCycle } from './team'
 import { Agent, AgentPatch, AgentRuntime, AppSettings, DevServer, Provider, NewAgentInput, Project, RoleDef, SavedPrompt } from '@shared/types'
 
@@ -593,6 +594,7 @@ app.whenReady().then(async () => {
     }
   }, 8000)
   more = registerMore(fctx)
+  registerUpdater(send)
   setTimeout(() => more?.restore(), 2500)
   const remote = registerRemote(fctx)
   app.on('before-quit', () => remote.dispose())

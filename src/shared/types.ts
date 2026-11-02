@@ -328,6 +328,13 @@ export interface AppSettings {
   restoreSession: boolean
   /** language agents should answer in ('' = whatever you write) */
   agentLanguage: string
+  /** QA browser tools for agents (browser_open, click, type, screenshot, console) */
+  browserTools?: boolean
+  /** look for a new Hive release on launch and every few hours */
+  autoUpdateCheck?: boolean
+  lastUpdateCheck?: number
+  /** "skip this version" */
+  skipVersion?: string
   /** new agents alternate between Claude Code and Codex */
   alternateCli?: boolean
   /** after a usage limit, continue automatically when the window resets */
@@ -465,4 +472,13 @@ export interface AgentQuestion {
   agentId: string
   questions: { question: string; header?: string; multiSelect?: boolean; options?: { label: string; description?: string }[] }[]
   at: number
+}
+
+/** a newer Hive release on GitHub */
+export interface UpdateInfo {
+  version: string
+  notes: string
+  url: string
+  asset?: { name: string; url: string; size: number }
+  canInstall: boolean
 }

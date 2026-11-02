@@ -16,7 +16,15 @@ const newId = (): string => Math.random().toString(36).slice(2, 10)
 
 export function BoardView() {
   const scheduleFor = useStore((s) => s.scheduleFor)
-  const [tab, setTab] = useState<'backlog' | 'schedules' | 'workflows' | 'ideas' | 'triggers'>(scheduleFor ? 'schedules' : 'backlog')
+  type BTab = 'backlog' | 'schedules' | 'workflows' | 'ideas' | 'triggers'
+  const [tab, setTab] = useState<BTab>(scheduleFor ? 'schedules' : ((useStore.getState().subTab as BTab) || 'backlog'))
+  const sub = useStore((s) => s.subTab)
+  useEffect(() => {
+    if (sub && ['backlog', 'schedules', 'workflows', 'ideas', 'triggers'].includes(sub)) {
+      setTab(sub as BTab)
+      useStore.setState({ subTab: null })
+    }
+  }, [sub])
   useEffect(() => {
     if (scheduleFor) setTab('schedules')
   }, [scheduleFor])

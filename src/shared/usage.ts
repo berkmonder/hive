@@ -17,6 +17,9 @@ export interface AgentUsage extends Tokens {
   workMs: number
   models: string[]
   days: Record<string, number> // day -> cost
+  /** messages you sent */
+  prompts: number
+  promptDays: Record<string, number> // day -> prompts
 }
 export interface UsageReport {
   agents: AgentUsage[]

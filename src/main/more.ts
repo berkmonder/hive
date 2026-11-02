@@ -15,6 +15,7 @@ import type { FeatureCtx } from './features'
 import { secretEnv } from './insights'
 import { saveImage } from './media'
 import { findSessions } from './otherclis'
+import { showQaBrowser } from './browser'
 
 const shellRun = (cmd: string, cwd?: string, timeout = 300_000): Promise<string> =>
   new Promise((resolve, reject) =>
@@ -236,6 +237,8 @@ export function registerMore(ctx: FeatureCtx): { onData: (agentId: string, data:
       )
     }
   }
+
+  ipcMain.handle('qa:show', (_e, agentId: string) => showQaBrowser(agentId))
 
   // ---------- sessions started in a terminal (outside Hive) ----------
   const firstUserText = (path: string, kind: 'claude' | 'codex'): string => {

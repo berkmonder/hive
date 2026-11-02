@@ -110,6 +110,7 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Quota switch:** when an account hits its usage limit, the conversation continues on the next account of that CLI – or is handed to another CLI.
 - **Per-CLI defaults:** model and reasoning effort for each CLI, overridable per agent; optional answer language for agents.
 - **Clone from Git:** project menu → *Clone from Git…* lists your GitHub / GitLab repos (`gh` / `glab`) or takes any URL and adds the clone as a project.
+- **Updates:** Hive checks GitHub Releases and installs new versions itself (*Install & restart*); Settings → About & data → Updates.
 - **Restore on launch:** agents and dev servers that were running when you quit come back, with their conversations resumed.
 - **Remote agents over SSH:** run the CLI on a server (`user@host` + folder); hooks and Hive's MCP tools travel back through an SSH reverse tunnel.
 - **Resume** the last conversation, **restart**, **interrupt**, **duplicate**, **pause after this turn** – from the right-click menu anywhere.
@@ -118,6 +119,8 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Prompt & role library** with placeholders (`{{agent}}`, `{{branch}}`…); roles become Claude's appended system prompt.
 
 ### Working with agents
+- **Sidebar dock:** live preview link, automations, new agent (also: continue a terminal session, paste a shared agent), tools and knowledge shortcuts with counters.
+- **QA browser:** agents open your dev server in a real Chromium, click, type, read console errors and take screenshots (right-click → Show QA browser to watch).
 - **Message box** with prompt library, screenshots (**⌘⇧2**, paste or drop images) you can **draw on** (circle, arrow, box, pen), voice dictation 🎤 and a ✨ prompt enhancer.
 - **Pick an element** in the dev-server preview and send its selector, text, styles and HTML to an agent with your note.
 - **Message queue:** while an agent works, Enter queues messages (reorder, send now, remove); ⌘Enter sends immediately.
@@ -231,7 +234,7 @@ src/
 **Teams & delegation**
 - [ ] Visual team editor (conditional branches, loops, max cycles)
 - [ ] Agent mail between agents · ticket scoping · delegation chains
-- [ ] More built-in roles and sharing agent definitions
+- [x] Role gallery (16 more specialists) and sharing roles / agents as copy-paste text
 
 **Scheduling & triggers**
 - [x] Monthly schedules and catch-up of missed runs
@@ -260,7 +263,8 @@ src/
 **Review & QA**
 - [ ] Per-agent diff on a shared branch · "Ask Claude" about a diff
 - [x] Add and reorder plan steps during review
-- [ ] QA in an embedded browser · Chrome control
+- [x] QA browser for agents (open, click, type, console, screenshots via Hive's MCP tools)
+- [ ] Chrome control (your own Chrome profiles)
 
 **Providers & infrastructure**
 - [ ] More provider presets · proxy per CLI · tool sets
@@ -279,7 +283,7 @@ src/
 **Review & insight**
 - [ ] Per-task diff (filter changes by card, commit separately)
 - [x] Reorder plan steps
-- [ ] Project statistics: time, prompts, daily activity charts
+- [x] Project statistics: prompts, active days, daily activity chart
 - [x] Unread indicators per project and agent
 - [ ] Commit context as a private gist (besides the git note)
 
