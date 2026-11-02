@@ -23,7 +23,8 @@ const api = {
   removeAgent: (id: string): Promise<void> => ipcRenderer.invoke('agent:remove', id),
   startAgent: (id: string, resume = false): Promise<void> => ipcRenderer.invoke('agent:start', id, resume),
   stopAgent: (id: string): Promise<void> => ipcRenderer.invoke('agent:stop', id),
-  restartAgent: (id: string): Promise<void> => ipcRenderer.invoke('agent:restart', id),
+  /** resume = keep the conversation (continue the last session) */
+  restartAgent: (id: string, resume = false): Promise<void> => ipcRenderer.invoke('agent:restart', id, resume),
   updateAgent: (id: string, patch: AgentPatch): Promise<{ restartHint: string[] }> => ipcRenderer.invoke('agent:update', id, patch),
   duplicateAgent: (id: string): Promise<Agent> => ipcRenderer.invoke('agent:duplicate', id),
   stopAll: (projectId: string): Promise<void> => ipcRenderer.invoke('project:stopAll', projectId),

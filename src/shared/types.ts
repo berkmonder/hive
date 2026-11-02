@@ -70,6 +70,8 @@ export interface Agent {
   accountId?: string
   /** overrides the CLI's default reasoning effort */
   effort?: '' | 'low' | 'medium' | 'high'
+  /** overrides the CLI's default model (alias like "opus" or a full model id) */
+  model?: string
   /** run the CLI on another machine over SSH */
   ssh?: { host: string; path: string }
   /** stopped by "Pause project" – resume picks the conversation back up */
@@ -435,6 +437,8 @@ export interface AgentPatch {
   accountId?: string | null
   /** '' = CLI default */
   effort?: string
+  /** '' = CLI default */
+  model?: string
 }
 
 export interface TeamEvent {

@@ -12,6 +12,7 @@ import { ChangesPanel } from './ChangesPanel'
 import { AgentActions } from './AgentActions'
 import { Icon, StatusPill } from './common'
 import { agentCommands } from './agentCommands'
+import { ModelChip } from './ModelChip'
 
 export function FocusView() {
   const { app, runtimes, focusedAgentId } = useStore()
@@ -46,7 +47,7 @@ export function FocusView() {
               <ContextBadge conv={conv} />
               <UsageChip agentId={agent.id} />
               {agent.branch && <span className="chip mono"><Icon name="branch" size={11} />{agent.branch}</span>}
-              <span className="chip">{provider?.name ?? agent.providerId}</span>
+              <ModelChip agent={agent} />
             </div>
           </div>
           {['claude', 'codex', 'gemini'].includes(agent.providerId) && (

@@ -1542,3 +1542,19 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .slash-desc { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
 .slash-src { margin-left: auto; flex: none; font-size: 10.5px; color: var(--dim); border: 1px solid var(--border); border-radius: 5px; padding: 0 5px; }
 .slash-hint { position: sticky; bottom: -4px; margin: 2px -4px -4px; padding: 5px 12px; font-size: 10.5px; color: var(--dim); background: var(--popup); border-top: 1px solid var(--border); }
+
+/* ---------- model & effort picker (agent screen) ---------- */
+.model-chip { cursor: pointer; background: none; font: inherit; font-size: 11.5px; }
+.model-chip:hover, .model-chip.on { color: var(--text); border-color: var(--accent); }
+.model-chip .mono { font-size: 11px; }
+.model-caret { font-size: 9px; opacity: .7; }
+.model-pop { position: fixed; z-index: 200; width: 340px; padding: 10px 12px 12px; border-radius: 12px; background: var(--popup); border: 1px solid var(--border-2); box-shadow: 0 20px 50px var(--shadow); display: flex; flex-direction: column; gap: 8px; }
+.model-pop .section-label:first-child { margin-top: 0; padding-top: 2px; border-top: 0; }
+.model-list { display: flex; flex-direction: column; gap: 2px; max-height: 240px; overflow: auto; }
+.model-list button { display: flex; align-items: baseline; gap: 10px; padding: 6px 8px; border: 0; border-radius: 7px; background: none; color: var(--text); text-align: left; cursor: pointer; font-size: 12.5px; }
+.model-list button span { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.model-list button:hover { background: var(--panel-3); }
+.model-list button.on { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.model-pop input { height: 30px; padding: 4px 8px; font-size: 12px; }
+.model-pop .seg button { width: auto; flex: 1; padding: 0 10px; font-size: 12px; }
+.model-pop p { margin: 0; }

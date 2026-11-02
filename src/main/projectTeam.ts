@@ -39,6 +39,7 @@ export async function copyTeam(fromId: string, toId: string): Promise<Agent[]> {
       parentId: a.parentId ? ids.get(a.parentId) : undefined,
       accountId: a.accountId,
       effort: a.effort,
+      model: a.model,
       createdAt: Date.now()
     }
     // keep worktree isolation where the new project allows it (git repo with a commit)

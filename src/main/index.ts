@@ -236,9 +236,9 @@ function registerIpc(): void {
 
   ipcMain.handle('agent:start', (_e, id: string, resume: boolean) => startAgent(id, resume))
   ipcMain.handle('agent:stop', (_e, id: string) => agents.stop(id))
-  ipcMain.handle('agent:restart', (_e, id: string) => {
+  ipcMain.handle('agent:restart', (_e, id: string, resume?: boolean) => {
     findAgent(id)
-    agents.restart(id, () => startAgent(id, false))
+    agents.restart(id, () => startAgent(id, !!resume))
   })
   ipcMain.handle('agent:update', async (_e, id: string, patch: AgentPatch) => {
     const agent = findAgent(id)
@@ -268,6 +268,7 @@ function registerIpc(): void {
 
     if (patch.accountId !== undefined) (next as Partial<Agent>).accountId = patch.accountId ?? undefined
     if (patch.effort !== undefined) (next as Partial<Agent>).effort = (patch.effort || undefined) as Agent['effort']
+    if (patch.model !== undefined) (next as Partial<Agent>).model = patch.model.trim() || undefined
     if (patch.ssh !== undefined) (next as Partial<Agent> & { ssh?: Agent['ssh'] }).ssh = patch.ssh?.host.trim() ? { host: patch.ssh.host.trim(), path: patch.ssh.path.trim() } : undefined
     let restartHint: string[] = []
     if (patch.parentId !== undefined && (patch.parentId || undefined) !== agent.parentId) {
@@ -288,6 +289,8 @@ function registerIpc(): void {
       Object.assign(a, next)
       if ('parentId' in next && !next.parentId) delete a.parentId
       if ('ssh' in next && !next.ssh) delete a.ssh
+      if ('model' in next && !next.model) delete a.model
+      if ('effort' in next && !next.effort) delete a.effort
       if ('worktreePath' in next && !next.worktreePath) {
         delete a.worktreePath
         delete a.branch
@@ -497,7 +500,7 @@ function startAgent(id: string, resume: boolean, prompt?: string, forkArgs?: str
   if (provider.id === 'claude' && lang) extraArgs = `${extraArgs ?? ''} --append-system-prompt '${`Always write your replies to the user in ${lang}.`.replace(/'/g, `'\\''`)}'`.trim()
   // model + reasoning effort (agent overrides the CLI default)
   const effort = agent.effort || getState().projectSettings[agent.projectId]?.effort || provider.effort || ''
-  const model = provider.model?.trim()
+  const model = agent.model?.trim() || provider.model?.trim()
   const env: Record<string, string> = { ...secretEnv(agent.projectId), ...accountEnv(agent) }
   if (model && !forkArgs) extraArgs = `${extraArgs ?? ''} ${provider.id === 'claude' ? '--model' : '-m'} '${model.replace(/'/g, '')}'`.trim()
   if (effort && provider.id === 'codex') extraArgs = `${extraArgs ?? ''} -c model_reasoning_effort='"${effort}"'`.trim()

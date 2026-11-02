@@ -452,7 +452,12 @@ const TR: Record<string, string> = {
   "↑↓ choose · Enter run · Tab add arguments · Esc close": "↑↓ seç · Enter çalıştır · Tab argüman ekle · Esc kapat",
   "Agents in new projects": "Yeni projelerdeki ajanlar",
   "First project's agents": "İlk projenin ajanları",
-  "None – start empty": "Hiçbiri – boş başlasın"
+  "None – start empty": "Hiçbiri – boş başlasın",
+  "…or type any model id": "…ya da herhangi bir model kimliği yaz",
+  "Used from the next start.": "Bir sonraki başlatmada kullanılır.",
+  "Claude switches the model right away.": "Claude modeli hemen değiştirir.",
+  "The agent restarts and keeps its conversation.": "Ajan yeniden başlar, konuşması korunur.",
+  "Change this agent's model and reasoning effort": "Bu ajanın modelini ve eforunu değiştir"
 }
 
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [
