@@ -204,6 +204,8 @@ function registerIpc(): void {
       providerId: input.providerId,
       initialPrompt: input.initialPrompt,
       parentId: input.parentId || undefined,
+      accountId: input.accountId,
+      effort: input.effort,
       ssh: input.ssh?.host.trim() ? { host: input.ssh.host.trim(), path: input.ssh.path.trim() } : undefined,
       createdAt: Date.now()
     }

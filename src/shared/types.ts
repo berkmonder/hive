@@ -397,6 +397,9 @@ export interface NewAgentInput {
   branch?: string
   parentId?: string
   ssh?: { host: string; path: string }
+  /** account id, '' = main login, undefined = project default */
+  accountId?: string
+  effort?: 'low' | 'medium' | 'high'
 }
 
 export interface AgentPatch {

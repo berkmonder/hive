@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AgentAccountFields } from './More'
 import { useStore } from '../store'
 import { Icon, cleanError } from './common'
 import { Character } from './Character'
@@ -25,6 +26,7 @@ export function NewAgentModal() {
     return app.providers.some((p) => p.id === app.settings.defaultProviderId) ? app.settings.defaultProviderId : (app.providers[0]?.id ?? 'claude')
   })
   const [prompt, setPrompt] = useState('')
+  const [acc, setAcc] = useState<{ accountId?: string; effort?: string }>({})
   const [isRepo, setIsRepo] = useState(false)
   const [useWorktree, setUseWorktree] = useState(false)
   const [remote, setRemote] = useState(false)
@@ -51,7 +53,8 @@ export function NewAgentModal() {
       const agent = await window.api.createAgent({
         projectId: project.id, name, role, color, providerId,
         initialPrompt: prompt.trim() || undefined, useWorktree: useWorktree && !remote, branch: useWorktree && !remote ? branch.trim() || undefined : undefined, parentId: parentId || undefined,
-        ssh: remote && sshHost.trim() ? { host: sshHost.trim(), path: sshPath.trim() } : undefined
+        ssh: remote && sshHost.trim() ? { host: sshHost.trim(), path: sshPath.trim() } : undefined,
+        accountId: acc.accountId, effort: (acc.effort || undefined) as 'low' | 'medium' | 'high' | undefined
       })
       close()
       focusAgent(agent.id)
@@ -101,6 +104,7 @@ export function NewAgentModal() {
             ))}
           </select>
         </label>
+        <AgentAccountFields providerId={providerId} accountId={acc.accountId} effort={acc.effort} onChange={(p) => setAcc({ ...acc, ...p })} />
 
         <label>Reports to
           <select value={parentId} onChange={(e) => setParentId(e.target.value)}>

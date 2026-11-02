@@ -236,6 +236,10 @@ const api = {
     failures: { agentId: string; name: string; reason: string; tail: string; hints: string[] }[]
     shell: string
   }> => ipcRenderer.invoke('doctor:run'),
+  externalSessions: {
+    list: (projectId: string): Promise<{ path: string; kind: 'claude' | 'codex'; at: number; size: number; title: string }[]> => ipcRenderer.invoke('sessions:external', projectId),
+    adopt: (projectId: string, path: string, kind: 'claude' | 'codex', name?: string): Promise<string> => ipcRenderer.invoke('sessions:adopt', projectId, path, kind, name)
+  },
   advisor: (projectId: string, task: string): Promise<{ agentId: string; reason: string }> => ipcRenderer.invoke('advisor:suggest', projectId, task),
   questions: {
     list: (): Promise<AgentQuestion[]> => ipcRenderer.invoke('questions:list'),

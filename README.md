@@ -103,6 +103,10 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 - **Precise status for Claude Code** via hooks (working / needs you / done); Codex reports turn ends through its `notify` hook, Codex and Gemini are also read from the screen ("esc to interrupt").
 - **Sign in from Hive:** *Settings → Agents & CLIs* has a *Sign in* button per CLI that opens its login in a terminal and shows who is signed in.
 - **Multiple accounts:** add extra Claude Code / Codex accounts (each gets its own config folder); choose one per project or per agent.
+  1. *Settings → Agents & CLIs → Add another Claude Code account*, then **Sign in** (log in with the second account in the browser).
+  2. Pick it per agent (*New agent / Edit → Account*) or as the project default (*Workspace → Automation → Accounts for this project*).
+  3. Your `CLAUDE.md`, settings, agents, commands, skills and plugins are shared with every account (linked from `~/.claude`); only the login differs.
+  4. With *Switch automatically* on, an agent that hits its limit continues the same conversation on the next account.
 - **Quota switch:** when an account hits its usage limit, the conversation continues on the next account of that CLI – or is handed to another CLI.
 - **Per-CLI defaults:** model and reasoning effort for each CLI, overridable per agent; optional answer language for agents.
 - **Clone from Git:** project menu → *Clone from Git…* lists your GitHub / GitLab repos (`gh` / `glab`) or takes any URL and adds the clone as a project.
@@ -235,7 +239,7 @@ src/
 - [x] Webhook signature verification and event / text filters
 
 **Sessions & workspace**
-- [ ] Import existing terminal sessions
+- [x] Continue Claude Code / Codex sessions started in a terminal (project menu → Continue a terminal session…)
 - [x] Linked folders: several folders per project (`--add-dir`)
 - [ ] Non-code workspaces / non-developer mode
 

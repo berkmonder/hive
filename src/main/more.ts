@@ -5,7 +5,7 @@
  */
 import { app, dialog, ipcMain, Notification } from 'electron'
 import { execFile } from 'child_process'
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { basename, dirname, join, relative } from 'path'
 import { randomUUID } from 'crypto'
@@ -14,6 +14,7 @@ import { getState, updateState } from './store'
 import type { FeatureCtx } from './features'
 import { secretEnv } from './insights'
 import { saveImage } from './media'
+import { findSessions } from './otherclis'
 
 const shellRun = (cmd: string, cwd?: string, timeout = 300_000): Promise<string> =>
   new Promise((resolve, reject) =>
@@ -26,12 +27,33 @@ const q = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`
 // ---------------- accounts ----------------
 export const accountDir = (a: Account): string => a.configDir || join(app.getPath('userData'), 'accounts', a.id)
 /** Environment that points a CLI at an account's own config folder. */
+/**
+ * Create an account's config folder and share your normal setup with it: Claude's CLAUDE.md,
+ * settings, agents, commands, skills and plugins (Codex: config.toml, AGENTS.md, prompts) are
+ * linked from ~/.claude (~/.codex), so only the login differs between accounts.
+ */
+export function ensureAccountDir(acc: Account): string {
+  const dir = accountDir(acc)
+  mkdirSync(dir, { recursive: true })
+  const base = acc.providerId === 'claude' ? process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude') : process.env.CODEX_HOME || join(homedir(), '.codex')
+  const shared = acc.providerId === 'claude' ? ['CLAUDE.md', 'settings.json', 'agents', 'commands', 'skills', 'plugins', 'output-styles', 'hooks'] : ['config.toml', 'AGENTS.md', 'prompts', 'skills']
+  if (acc.configDir || base === dir) return dir
+  for (const name of shared) {
+    const from = join(base, name)
+    const to = join(dir, name)
+    try {
+      if (existsSync(from) && !existsSync(to)) symlinkSync(from, to)
+    } catch (e) {
+      console.warn('[accounts] could not link', name, e)
+    }
+  }
+  return dir
+}
 export function accountEnv(agent: Agent): Record<string, string> {
   const id = agent.accountId === '' ? undefined : agent.accountId ?? getState().projectSettings[agent.projectId]?.accounts?.[agent.providerId]
   const acc = getState().settings.accounts.find((a) => a.id === id)
   if (!acc || acc.providerId !== agent.providerId) return {}
-  const dir = accountDir(acc)
-  mkdirSync(dir, { recursive: true })
+  const dir = ensureAccountDir(acc)
   if (acc.providerId === 'claude') return { CLAUDE_CONFIG_DIR: dir }
   if (acc.providerId === 'codex') return { CODEX_HOME: dir }
   return {}
@@ -41,11 +63,12 @@ const codexHome = (a?: Account): string => (a ? accountDir(a) : process.env.CODE
 function signinStatus(providerId: string, acc?: Account): string {
   if (providerId === 'claude') {
     const dir = claudeHome(acc)
-    const cfg = [join(dir, '.credentials.json'), join(dir, '.claude.json'), join(homedir(), '.claude.json')].find(existsSync)
+    // an extra account only counts its own folder; your normal login also has ~/.claude.json
+    const cfg = [join(dir, '.claude.json'), ...(acc ? [] : [join(homedir(), '.claude.json')])].find(existsSync)
     try {
       const j = cfg ? JSON.parse(readFileSync(cfg, 'utf8')) : null
       const email = j?.oauthAccount?.emailAddress
-      return email ? `Signed in as ${email}` : existsSync(join(dir, '.credentials.json')) ? 'Signed in' : 'Not signed in (or uses the macOS keychain)'
+      return email ? `Signed in as ${email}` : existsSync(join(dir, '.credentials.json')) ? 'Signed in' : acc ? 'Not signed in' : 'Not signed in (or uses the macOS keychain)'
     } catch {
       return 'Unknown'
     }
@@ -79,16 +102,25 @@ export function registerMore(ctx: FeatureCtx): { onData: (agentId: string, data:
   ipcMain.handle('accounts:save', (_e, list: Account[]) => save((s) => (s.settings.accounts = list)))
   ipcMain.handle('accounts:signin', (_e, providerId: string, accountId?: string) => {
     const acc = getState().settings.accounts.find((a) => a.id === accountId)
-    const env: Record<string, string> = {}
-    if (acc?.providerId === 'claude') env.CLAUDE_CONFIG_DIR = accountDir(acc)
-    if (acc?.providerId === 'codex') env.CODEX_HOME = accountDir(acc)
-    if (acc) mkdirSync(accountDir(acc), { recursive: true })
+    const env: Record<string, string> = { HIVE_OPEN_BROWSER: '1' }
+    if (acc?.providerId === 'claude') env.CLAUDE_CONFIG_DIR = ensureAccountDir(acc)
+    if (acc?.providerId === 'codex') env.CODEX_HOME = ensureAccountDir(acc)
     const cli = getState().providers.find((p) => p.id === providerId)?.command.split(' ')[0] || providerId
-    const cmd = providerId === 'codex' ? `${cli} login` : providerId === 'claude' ? `${cli} /login` : cli
+    // Claude: a fresh config folder starts with onboarding (which includes the login);
+    // an already set-up one gets /login typed in once the CLI is ready
+    const onboarded = providerId === 'claude' && existsSync(join(claudeHome(acc), '.claude.json')) && (acc ? true : existsSync(join(homedir(), '.claude.json')))
+    const cmd = providerId === 'codex' ? `${cli} login` : cli || LOGIN[providerId]
     const id = `signin-${providerId}-${accountId ?? 'default'}`
-    const srv: DevServer = { id, projectId: '', name: `Sign in · ${providerId}`, command: cmd || LOGIN[providerId], cwd: '' }
+    const srv: DevServer = { id, projectId: '', name: `Sign in · ${providerId}`, command: cmd, cwd: '' }
     ctx.servers.stop(id)
-    setTimeout(() => ctx.servers.start(srv, homedir(), env), 300)
+    setTimeout(() => {
+      ctx.servers.start(srv, homedir(), env)
+      if (onboarded)
+        setTimeout(() => {
+          ctx.servers.write(id, '/login')
+          setTimeout(() => ctx.servers.write(id, '\r'), 200)
+        }, 3500)
+    }, 300)
     return id
   })
   ipcMain.handle('accounts:status', async (_e, providerId: string, accountId?: string) =>
@@ -204,6 +236,63 @@ export function registerMore(ctx: FeatureCtx): { onData: (agentId: string, data:
       )
     }
   }
+
+  // ---------- sessions started in a terminal (outside Hive) ----------
+  const firstUserText = (path: string, kind: 'claude' | 'codex'): string => {
+    try {
+      const fd = readFileSync(path, 'utf8').slice(0, 400_000)
+      for (const line of fd.split('\n')) {
+        if (!line.trim()) continue
+        const j = JSON.parse(line)
+        if (kind === 'claude' && j.type === 'user' && !j.isMeta) {
+          const c = j.message?.content
+          const t = typeof c === 'string' ? c : Array.isArray(c) ? c.map((b: { text?: string }) => b.text ?? '').join(' ') : ''
+          if (t.trim() && !t.startsWith('<') && !t.startsWith('Caveat:')) return t.trim().slice(0, 160)
+        }
+        if (kind === 'codex' && j.type === 'response_item' && j.payload?.type === 'message' && j.payload.role === 'user') {
+          const t = (j.payload.content ?? []).map((b: { text?: string }) => b.text ?? '').join(' ').trim()
+          if (t && !t.startsWith('<')) return t.slice(0, 160)
+        }
+      }
+    } catch {
+      /* unreadable */
+    }
+    return ''
+  }
+  ipcMain.handle('sessions:external', (_e, projectId: string) => {
+    const p = ctx.findProject(projectId)
+    const known = new Set(getState().agents.flatMap((a) => a.sessions ?? []))
+    const out: { path: string; kind: 'claude' | 'codex'; at: number; size: number; title: string }[] = []
+    const cdir = join(claudeHome(), 'projects', p.path.replace(/[^a-zA-Z0-9]/g, '-'))
+    if (existsSync(cdir))
+      for (const f of readdirSync(cdir)) {
+        if (!f.endsWith('.jsonl')) continue
+        const path = join(cdir, f)
+        if (known.has(path)) continue
+        const st = statSync(path)
+        if (st.size < 200) continue
+        out.push({ path, kind: 'claude', at: st.mtimeMs, size: st.size, title: firstUserText(path, 'claude') })
+      }
+    for (const path of findSessions('codex', p.path, Date.now() - 30 * 86400000)) {
+      if (known.has(path)) continue
+      const st = statSync(path)
+      out.push({ path, kind: 'codex', at: st.mtimeMs, size: st.size, title: firstUserText(path, 'codex') })
+    }
+    return out.filter((x) => x.title).sort((a, b) => b.at - a.at).slice(0, 60)
+  })
+  ipcMain.handle('sessions:adopt', (_e, projectId: string, path: string, kind: 'claude' | 'codex', name?: string) => {
+    const roles = getState().roles
+    const color = ['#f97316', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#eab308'][getState().agents.length % 6]
+    const agent: Agent = {
+      id: randomUUID(), projectId, name: name?.trim() || `Imported ${kind === 'claude' ? 'Claude' : 'Codex'}`, role: roles[0]?.name ?? 'General',
+      color, providerId: kind, sessions: [path], createdAt: Date.now()
+    }
+    save((s) => s.agents.push(agent))
+    const sid = basename(path).replace(/\.jsonl$/, '')
+    const uuid = sid.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0] ?? sid
+    ctx.startAgent(agent.id, false, undefined, kind === 'claude' ? `--resume ${sid}` : `resume ${uuid}`)
+    return agent.id
+  })
 
   // ---------- memory <-> folder sync (e.g. an Obsidian vault) ----------
   const synced = new Map<string, string>() // projectId -> content at last sync

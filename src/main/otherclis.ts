@@ -54,10 +54,10 @@ function walkCodex(sinceMs: number): string[] {
   const root = join(codexHome(), 'sessions')
   if (!existsSync(root)) return []
   const out: string[] = []
-  // only look at the day folders around `since` (today + yesterday is enough for running agents)
-  for (const back of [0, 1, 2]) {
-    const d = new Date(Math.max(sinceMs, Date.now() - 3 * 86400000) + back * 86400000)
-    if (d.getTime() > Date.now() + 86400000) break
+  // day folders from `since` (at most 30 days back, at least the last 3) up to today
+  const days = Math.min(30, Math.max(3, Math.ceil((Date.now() - sinceMs) / 86400000) + 1))
+  for (let back = 0; back < days; back++) {
+    const d = new Date(Date.now() - back * 86400000)
     const dir = join(root, String(d.getFullYear()), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0'))
     if (!existsSync(dir)) continue
     for (const f of readdirSync(dir)) if (f.endsWith('.jsonl')) out.push(join(dir, f))

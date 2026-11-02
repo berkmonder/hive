@@ -380,7 +380,14 @@ const TR: Record<string, string> = {
   "New agents alternate between Claude Code and Codex, so both subscriptions share the work.": "Yeni ajanlar Claude Code ve Codex arasında dönüşümlü açılır, iki abonelik işi paylaşır.",
   "🧠 Defaults for this project": "🧠 Bu projenin varsayılanları",
   "Agents without their own setting use these.": "Kendi ayarı olmayan ajanlar bunları kullanır.",
-  "Sync memory with a folder": "Hafızayı bir klasörle eşitle"
+  "Sync memory with a folder": "Hafızayı bir klasörle eşitle",
+  "Continue a terminal session…": "Terminal oturumunu sürdür…",
+  "Continue a terminal session": "Terminal oturumunu sürdür",
+  "Claude Code and Codex conversations you started in a terminal in this project folder. Pick one – it continues as a Hive agent with its full history.": "Bu proje klasöründe terminalde başlattığın Claude Code ve Codex konuşmaları. Birini seç – tüm geçmişiyle Hive ajanı olarak devam eder.",
+  "Looking for sessions…": "Oturumlar aranıyor…",
+  "No other sessions found for this folder.": "Bu klasör için başka oturum bulunamadı.",
+  "Conversation resumed as a new agent": "Konuşma yeni bir ajan olarak sürdürüldü",
+  "Not signed in": "Giriş yapılmamış"
 }
 
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [
@@ -394,6 +401,7 @@ const PATTERNS: [RegExp, (...m: string[]) => string][] = [
   [/^(\d+) overlaps?$/, (_, n) => `${n} çakışma`],
   [/^Monthly on day (\d+) at (.+)$/, (_, d, t) => `Her ayın ${d}. günü ${t}`],
   [/^Resume (\d+)$/, (_, n) => `${n} ajanı sürdür`],
+  [/^ · used by (\d+) agents?$/, (_, n) => ` · ${n} ajan kullanıyor`],
   [/^(.+) asks$/, (_, n) => `${n} soruyor`],
   [/^Sign in · (.+)$/, (_, n) => `Giriş yap · ${n}`],
   [/^Import from (.+)$/, (_, n) => `${n} kaynağından aktar`],

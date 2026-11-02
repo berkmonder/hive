@@ -50,7 +50,16 @@ export class ServerManager {
       cols: 120,
       rows: 30,
       cwd,
-      env: { ...process.env, ...env, TERM: 'xterm-256color', COLORTERM: 'truecolor', FORCE_COLOR: '1', BROWSER: 'none' } as Record<string, string>
+      env: (() => {
+        const e: Record<string, string | undefined> = { ...process.env, BROWSER: 'none', ...env, TERM: 'xterm-256color', COLORTERM: 'truecolor', FORCE_COLOR: '1' }
+        // sign-in terminals must be able to open the browser for OAuth
+        if (env.HIVE_OPEN_BROWSER) {
+          e.BROWSER = process.env.BROWSER
+          delete e.HIVE_OPEN_BROWSER
+        }
+        for (const k of Object.keys(e)) if (e[k] === undefined) delete e[k]
+        return e as Record<string, string>
+      })()
     })
     const p: Proc = { pty: term, buffer: '', scan: '', runtime: { serverId: server.id, running: true, startedAt: Date.now() } }
     this.procs.set(server.id, p)

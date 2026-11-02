@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import type { Agent, AgentStatus } from '@shared/types'
 import { useStore } from '../store'
-import { CloneRepoModal } from './More'
+import { CloneRepoModal, ImportSessionsModal } from './More'
 import { Character } from './Character'
 import { Icon, STATUS_LABEL, timeAgo } from './common'
 import { agentCommands } from './agentCommands'
@@ -20,6 +20,7 @@ export function Sidebar() {
   const [projOpen, setProjOpen] = useState(false)
   const unread = useStore((st) => st.unread)
   const [cloning, setCloning] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const project = app.projects.find((p) => p.id === selectedProjectId)
   const agents = app.agents.filter(
@@ -31,6 +32,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       {cloning && <CloneRepoModal onClose={() => setCloning(false)} />}
+      {importing && <ImportSessionsModal onClose={() => setImporting(false)} />}
       {/* project switcher */}
       <div className="card">
         <div className="card-title">Project</div>
@@ -56,6 +58,11 @@ export function Sidebar() {
             <button className="add" onClick={() => { setCloning(true); setProjOpen(false) }}>
               <Icon name="github" /> Clone from Git…
             </button>
+            {selectedProjectId && (
+              <button className="add" onClick={() => { setImporting(true); setProjOpen(false) }}>
+                <Icon name="terminal" /> Continue a terminal session…
+              </button>
+            )}
           </div>
         )}
 

@@ -36,7 +36,7 @@ export function SignInModal({ providerId, account, onClose }: { providerId: stri
           <h2>Sign in · {providerId}{account ? ` · ${account.name}` : ''}</h2>
           <span className={`chip ${/^Signed in/.test(status) ? 'ok' : ''}`}>{status || '…'}</span>
         </div>
-        <p className="muted small">Follow the CLI's steps below (a browser window may open). Close this when it says you are logged in.</p>
+        <p className="muted small">Follow the CLI's steps below – a browser window opens for the login (or click the link). Claude: if it doesn't ask you to log in, type <span className="mono">/login</span>. Close this when it says you are logged in{account ? ' – this account then works for every agent that uses it' : ''}.</p>
         <div className="signin-term">{id && rt ? <Terminal key={id} agentId={id} source="server" /> : <div className="muted small">Starting…</div>}</div>
         <div className="modal-foot"><button className="btn" onClick={close}>Done</button></div>
       </div>
@@ -89,7 +89,10 @@ export function AccountsSettings() {
                   <div key={a.id} className="acc-row">
                     <Icon name="users" size={12} />
                     <input value={a.name} onChange={(e) => saveAccounts(s.accounts.map((x) => (x.id === a.id ? { ...x, name: e.target.value } : x)))} />
-                    <span className="muted small">{status[a.id] ?? ''}</span>
+                    <span className="muted small">{status[a.id] ?? ''}{(() => {
+                      const n = app.agents.filter((g) => g.providerId === a.providerId && (g.accountId === a.id || (g.accountId === undefined && app.projectSettings[g.projectId]?.accounts?.[a.providerId] === a.id))).length
+                      return n ? ` · used by ${n} agent${n === 1 ? '' : 's'}` : ' · not used yet – pick it per agent (Edit) or per project (Workspace → Automation)'
+                    })()}</span>
                     <div className="spacer" />
                     <button className="btn ghost sm" onClick={() => setSignin({ providerId: p.id, account: a })}>Sign in</button>
                     <button className="icon-btn danger" title="Remove account" onClick={() => saveAccounts(s.accounts.filter((x) => x.id !== a.id))}><Icon name="trash" size={12} /></button>
@@ -470,6 +473,49 @@ export function PauseSummary() {
           </div>
         ))}
         <div className="modal-foot"><button className="btn" onClick={() => setList([])}>OK</button></div>
+      </div>
+    </div>
+  )
+}
+
+/* ---------- conversations started in a terminal ---------- */
+export function ImportSessionsModal({ onClose }: { onClose: () => void }) {
+  const pid = useStore((s) => s.selectedProjectId)
+  const [list, setList] = useState<{ path: string; kind: 'claude' | 'codex'; at: number; size: number; title: string }[] | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  useEffect(() => {
+    if (pid) window.api.externalSessions.list(pid).then(setList).catch((e) => (err(e), setList([])))
+  }, [pid])
+  const adopt = async (x: { path: string; kind: 'claude' | 'codex'; title: string }): Promise<void> => {
+    if (!pid) return
+    setBusy(x.path)
+    try {
+      const id = await window.api.externalSessions.adopt(pid, x.path, x.kind, x.title.split(/\s+/).slice(0, 4).join(' '))
+      useStore.getState().focusAgent(id)
+      toast('Conversation resumed as a new agent', 'success')
+      onClose()
+    } catch (e) {
+      err(e)
+    } finally {
+      setBusy(null)
+    }
+  }
+  return (
+    <div className="backdrop" onMouseDown={onClose}>
+      <div className="modal clone-modal" onMouseDown={(e) => e.stopPropagation()}>
+        <h2>Continue a terminal session</h2>
+        <p className="muted small">Claude Code and Codex conversations you started in a terminal in this project folder. Pick one – it continues as a Hive agent with its full history.</p>
+        <div className="repo-list">
+          {list === null && <p className="muted small">Looking for sessions…</p>}
+          {list?.length === 0 && <p className="muted small">No other sessions found for this folder.</p>}
+          {list?.map((x) => (
+            <button key={x.path} className="repo-item" disabled={!!busy} onClick={() => adopt(x)}>
+              <Icon name={x.kind === 'claude' ? 'sparkle' : 'terminal'} size={13} /> <b>{x.title}</b>
+              <span className="muted small">{x.kind === 'claude' ? 'Claude Code' : 'Codex'} · {new Date(x.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · {Math.round(x.size / 1024)} KB{busy === x.path ? ' · starting…' : ''}</span>
+            </button>
+          ))}
+        </div>
+        <div className="modal-foot"><button className="btn ghost" onClick={onClose}>Close</button></div>
       </div>
     </div>
   )
