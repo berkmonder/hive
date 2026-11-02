@@ -16,6 +16,7 @@ import { secretEnv } from './insights'
 import { saveImage } from './media'
 import { findSessions } from './otherclis'
 import { showQaBrowser } from './browser'
+import { seedNewProject } from './projectTeam'
 
 const shellRun = (cmd: string, cwd?: string, timeout = 300_000): Promise<string> =>
   new Promise((resolve, reject) =>
@@ -106,6 +107,65 @@ export function registerMore(ctx: FeatureCtx): { onData: (agentId: string, data:
     })
     n.show()
   }
+
+  // ---------- slash commands for the composer's "/" menu ----------
+  /** custom commands, skills and prompts the agent's CLI offers (built-ins live in the renderer) */
+  ipcMain.handle('agent:slashCommands', (_e, agentId: string): { name: string; desc: string; source: string }[] => {
+    const a = getState().agents.find((x) => x.id === agentId)
+    if (!a) return []
+    const out: { name: string; desc: string; source: string }[] = []
+    const describe = (file: string): string => {
+      try {
+        const t = readFileSync(file, 'utf8').slice(0, 4000)
+        const fm = t.match(/^---\n([\s\S]*?)\n---/)
+        const d = fm?.[1].match(/^description:\s*(.+)$/m)?.[1]
+        if (d) return d.trim().replace(/^["']|["']$/g, '').slice(0, 160)
+        const body = fm ? t.slice(fm[0].length) : t
+        return (body.split('\n').map((l) => l.replace(/^#+\s*/, '').trim()).find(Boolean) ?? '').slice(0, 160)
+      } catch {
+        return ''
+      }
+    }
+    // .claude/commands/foo/bar.md → /foo:bar
+    const commands = (dir: string, source: string, prefix = '', depth = 0): void => {
+      if (depth > 3 || !existsSync(dir)) return
+      for (const f of readdirSync(dir, { withFileTypes: true })) {
+        if (f.isDirectory()) commands(join(dir, f.name), source, `${prefix}${f.name}:`, depth + 1)
+        else if (f.name.endsWith('.md')) out.push({ name: prefix + f.name.slice(0, -3), desc: describe(join(dir, f.name)), source })
+      }
+    }
+    const skills = (dir: string, source: string): void => {
+      if (!existsSync(dir)) return
+      for (const f of readdirSync(dir, { withFileTypes: true })) {
+        const md = join(dir, f.name, 'SKILL.md')
+        if (f.isDirectory() && existsSync(md)) out.push({ name: f.name, desc: describe(md), source })
+      }
+    }
+    try {
+      const cwd = ctx.agentCwd(a)
+      if (a.providerId === 'claude') {
+        commands(join(cwd, '.claude', 'commands'), 'project')
+        commands(join(claudeHome(), 'commands'), 'personal')
+        skills(join(cwd, '.claude', 'skills'), 'project skill')
+        skills(join(claudeHome(), 'skills'), 'skill')
+      } else if (a.providerId === 'codex') {
+        const dir = join(codexHome(), 'prompts')
+        if (existsSync(dir)) for (const f of readdirSync(dir)) if (f.endsWith('.md')) out.push({ name: `prompts:${f.slice(0, -3)}`, desc: describe(join(dir, f)), source: 'prompt' })
+      } else if (a.providerId === 'gemini') {
+        for (const [dir, source] of [[join(cwd, '.gemini', 'commands'), 'project'], [join(homedir(), '.gemini', 'commands'), 'personal']] as const) {
+          if (!existsSync(dir)) continue
+          for (const f of readdirSync(dir)) if (f.endsWith('.toml')) {
+            const t = readFileSync(join(dir, f), 'utf8')
+            out.push({ name: f.slice(0, -5), desc: t.match(/^description\s*=\s*"(.*)"/m)?.[1] ?? '', source })
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[slash] could not list commands', e)
+    }
+    const seen = new Set<string>()
+    return out.filter((c) => !seen.has(c.name) && seen.add(c.name))
+  })
 
   // ---------- accounts & sign-in ----------
   ipcMain.handle('accounts:save', (_e, list: Account[]) => save((s) => (s.settings.accounts = list)))
@@ -517,7 +577,9 @@ export function registerMore(ctx: FeatureCtx): { onData: (agentId: string, data:
     const cmd = /^[\w.-]+\/[\w.-]+$/.test(url) ? `gh repo clone ${q(url)} ${q(dest)}` : `git clone ${q(url)} ${q(dest)}`
     await shellRun(cmd, res.filePaths[0], 600_000)
     const project: Project = { id: randomUUID(), name, path: dest, createdAt: Date.now() }
-    save((s) => s.projects.push(project))
+    updateState((s) => s.projects.push(project))
+    await seedNewProject(project)
+    ctx.broadcastState()
     return project
   })
 

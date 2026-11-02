@@ -31,6 +31,12 @@ const api = {
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:write', text),
   agentBuffer: (id: string): Promise<{ data: string; cols: number; rows: number }> => ipcRenderer.invoke('agent:buffer', id),
   agentCwd: (id: string): Promise<string> => ipcRenderer.invoke('agent:cwd', id),
+  /** project new projects copy their agents from (null = none) */
+  projectTeamSource: (exceptId?: string): Promise<Project | null> => ipcRenderer.invoke('project:teamSource', exceptId),
+  /** copies all agents of one project into another; returns how many */
+  copyTeam: (fromId: string, toId: string): Promise<number> => ipcRenderer.invoke('project:copyTeam', fromId, toId),
+  /** custom slash commands / skills / prompts the agent's CLI offers */
+  slashCommands: (id: string): Promise<{ name: string; desc: string; source: string }[]> => ipcRenderer.invoke('agent:slashCommands', id),
   input: (id: string, data: string): void => ipcRenderer.send('agent:input', id, data),
   resize: (id: string, cols: number, rows: number): void => ipcRenderer.send('agent:resize', id, cols, rows),
 

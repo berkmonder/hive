@@ -448,10 +448,17 @@ const TR: Record<string, string> = {
   "Import OpenAPI": "OpenAPI içe aktar",
   "Add a route, generate them from a description, or import an OpenAPI file.": "Route ekle, bir açıklamadan ürettir ya da OpenAPI dosyası içe aktar.",
   "Delete mock": "Mock'u sil",
-  "Copy the base URL": "Temel URL'yi kopyala"
+  "Copy the base URL": "Temel URL'yi kopyala",
+  "↑↓ choose · Enter run · Tab add arguments · Esc close": "↑↓ seç · Enter çalıştır · Tab argüman ekle · Esc kapat",
+  "Agents in new projects": "Yeni projelerdeki ajanlar",
+  "First project's agents": "İlk projenin ajanları",
+  "None – start empty": "Hiçbiri – boş başlasın"
 }
 
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [
+  [/^New projects start with a copy of these agents \(names, roles, CLIs, who leads whom\)\. Default: your first project with agents(?: – now (.+))?\.$/, (_, n) => `Yeni projeler bu ajanların bir kopyasıyla başlar (isim, rol, CLI, kim kime bağlı). Varsayılan: ajanı olan ilk projen${n ? ` – şu an ${n}` : ''}.`],
+  [/^Add the agents from (.+) \((\d+)\)$/, (_, p, n) => `${p} projesinin ajanlarını ekle (${n})`],
+  [/^Added (\d+) agents? from (.+)$/, (_, n, p) => `${p} projesinden ${n} ajan eklendi`],
   [/^(\d+) need input$/, (_, n) => `${n} seni bekliyor`],
   [/^Turn (\d+) \/ (\d+)$/, (_, a, b) => `Tur ${a} / ${b}`],
   [/^Updated (.+)$/, (_, t) => `Güncellendi ${t}`],

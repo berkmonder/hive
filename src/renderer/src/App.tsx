@@ -195,6 +195,19 @@ export default function App() {
             <div className="welcome">
               <div className="welcome-art"><RoomCharacter seed="empty" color="#f97316" /></div>
               <p className="muted">No agents in this project yet.</p>
+              {(() => {
+                // same template as new projects get: the chosen one, else the first project with agents
+                const pick = app.settings.newProjectAgents
+                const has = (id: string): boolean => id !== project.id && app.agents.some((a) => a.projectId === id)
+                const from = pick === 'none' ? undefined
+                  : app.projects.find((p) => p.id === pick && has(p.id)) ?? [...app.projects].sort((a, b) => a.createdAt - b.createdAt).find((p) => has(p.id))
+                const n = from ? app.agents.filter((a) => a.projectId === from.id).length : 0
+                return from ? (
+                  <button className="btn big" onClick={() => window.api.copyTeam(from.id, project.id).then((k) => toast(`Added ${k} agent${k === 1 ? '' : 's'} from ${from.name}`, 'success')).catch((e) => toast(String(e?.message ?? e), 'error'))}>
+                    <Icon name="users" /> Add the agents from {from.name} ({n})
+                  </button>
+                ) : null
+              })()}
               <button className="btn big" onClick={() => setShowNewAgent(true)}>
                 <Icon name="plus" /> Create the first agent
               </button>

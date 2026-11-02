@@ -280,9 +280,19 @@ function AgentSettings() {
   const providers = useStore((st) => st.app.providers)
   const roles = useStore((st) => st.app.roles)
   const prompts = useStore((st) => st.app.prompts)
+  const projects = useStore((st) => st.app.projects)
+  const agents = useStore((st) => st.app.agents)
+  const withAgents = [...projects].sort((a, b) => a.createdAt - b.createdAt).filter((p) => agents.some((a) => a.projectId === p.id))
   return (
     <>
       <Group title="New agents">
+        <Row label="Agents in new projects" hint={`New projects start with a copy of these agents (names, roles, CLIs, who leads whom). Default: your first project with agents${withAgents[0] ? ` – now ${withAgents[0].name}` : ''}.`}>
+          <select value={s.newProjectAgents ?? ''} onChange={(e) => save({ newProjectAgents: e.target.value })}>
+            <option value="">First project&apos;s agents</option>
+            {withAgents.map((p) => <option key={p.id} value={p.id}>{p.name} ({agents.filter((a) => a.projectId === p.id).length})</option>)}
+            <option value="none">None – start empty</option>
+          </select>
+        </Row>
         <Row label="Default CLI">
           <select value={s.defaultProviderId} onChange={(e) => save({ defaultProviderId: e.target.value })}>
             {providers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}

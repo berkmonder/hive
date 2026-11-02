@@ -199,7 +199,7 @@ h2 { font-size: 15px; margin: 0; font-weight: 600; }
 .terminal .xterm-viewport { background: transparent !important; }
 .empty-term { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); }
 
-.composer { margin: 10px 14px 14px; border: 1.5px solid var(--accent); border-radius: 16px; background: color-mix(in srgb, var(--accent) 5%, var(--panel));
+.composer { position: relative; margin: 10px 14px 14px; border: 1.5px solid var(--accent); border-radius: 16px; background: color-mix(in srgb, var(--accent) 5%, var(--panel));
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 8%, transparent); }
 .composer.off { border-color: var(--border-2); box-shadow: none; }
 .composer textarea { border: 0; background: none; resize: none; padding: 12px 14px 4px; font-size: 13.5px; }
@@ -1473,7 +1473,7 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 
 /* ---------- conversation (Claude Code in VS Code style) ---------- */
 .cc { height: 100%; overflow: auto; background: var(--bg-2); padding: 18px 0 28px; }
-.cc-col { max-width: 820px; margin: 0 auto; padding: 0 22px; display: flex; flex-direction: column; gap: 4px; }
+.cc-col { padding: 0 22px; display: flex; flex-direction: column; gap: 4px; }
 .cc .chat-body { padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0; font-size: 13.5px !important; line-height: 1.65 !important; }
 .cc-user { position: relative; margin: 14px 0 8px; padding: 10px 14px; border-radius: 8px; background: var(--panel); border: 1px solid var(--border-2); }
 .cc-user .chat-body { color: var(--text); }
@@ -1485,7 +1485,8 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .cc-item:last-of-type::after, .cc-item:has(+ .cc-user)::after, .cc-item:has(+ .cc-working)::after { display: none; }
 .cc-text::before { background: #d97757; }
 .cc-text { padding-top: 4px; padding-bottom: 6px; }
-.cc-text .chat-speak { position: absolute; right: -28px; top: 2px; }
+.cc-text { padding-right: 30px; }
+.cc-text .chat-speak { position: absolute; right: 0; top: 2px; }
 .cc-text:hover .chat-speak { opacity: 1; }
 .cc-tool::before { background: #4ade80; }
 .cc-tool.err::before { background: #f87171; }
@@ -1532,3 +1533,12 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .cc-hello { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .cc-hello b { font-size: 16px; }
 .cc-todos li.completed i { text-decoration: none; }
+
+/* ---------- composer "/" menu ---------- */
+.slash-menu { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 30; max-height: 320px; overflow: auto; padding: 4px; border-radius: 12px; background: var(--popup); border: 1px solid var(--border-2); box-shadow: 0 16px 40px var(--shadow); display: flex; flex-direction: column; }
+.slash-item { display: flex; align-items: baseline; gap: 10px; width: 100%; min-width: 0; padding: 6px 10px; border: 0; border-radius: 7px; background: none; color: var(--text); text-align: left; cursor: pointer; font-size: 12.5px; }
+.slash-item b { flex: none; font-weight: 600; color: var(--accent-2); }
+.slash-item.on { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.slash-desc { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.slash-src { margin-left: auto; flex: none; font-size: 10.5px; color: var(--dim); border: 1px solid var(--border); border-radius: 5px; padding: 0 5px; }
+.slash-hint { position: sticky; bottom: -4px; margin: 2px -4px -4px; padding: 5px 12px; font-size: 10.5px; color: var(--dim); background: var(--popup); border-top: 1px solid var(--border); }

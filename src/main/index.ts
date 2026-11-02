@@ -19,6 +19,7 @@ import { registerInsights, secretEnv, secretValues } from './insights'
 import { registerRemote } from './remote'
 import { findSessions } from './otherclis'
 import { accountEnv, registerMore } from './more'
+import { copyTeam, seedNewProject, teamSource } from './projectTeam'
 import { utf8Locale } from './agents'
 import { registerUpdater } from './updater'
 import { createTray } from './tray'
@@ -179,8 +180,16 @@ function registerIpc(): void {
     if (existing) return existing
     const project: Project = { id: randomUUID(), name: basename(path), path, createdAt: Date.now() }
     updateState((s) => s.projects.push(project))
+    await seedNewProject(project)
     broadcastState()
     return project
+  })
+  /** template project for "start with the same agents" (null = none) */
+  ipcMain.handle('project:teamSource', (_e, exceptId?: string) => teamSource(exceptId) ?? null)
+  ipcMain.handle('project:copyTeam', async (_e, fromId: string, toId: string) => {
+    const added = await copyTeam(fromId, toId)
+    broadcastState()
+    return added.length
   })
 
   ipcMain.handle('project:remove', async (_e, id: string) => {

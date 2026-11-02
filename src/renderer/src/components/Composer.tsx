@@ -5,6 +5,7 @@ import { useStore } from '../store'
 import { Recorder } from '../dictation'
 import { Icon, cleanError } from './common'
 import { SketchEditor } from './Sketch'
+import { BUILTIN_SLASH, matchSlash, type SlashCommand } from './slashCommands'
 
 type Shot = { path: string; dataUrl: string }
 
@@ -57,6 +58,33 @@ export function Composer({ agentId, compact }: { agentId: string; compact?: bool
   const running = !!rt?.running
   const busy = running && rt?.status === 'working'
 
+  // "/" menu: the CLI's built-in commands plus custom commands / skills / prompts
+  const [custom, setCustom] = useState<SlashCommand[]>([])
+  const [slashSel, setSlashSel] = useState(0)
+  const [slashOff, setSlashOff] = useState(false)
+  const slashList = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    setCustom([])
+    window.api.slashCommands(agentId).then(setCustom).catch(() => undefined)
+  }, [agentId, agent?.providerId])
+  const slashQ = text.match(/^\/(\S*)$/)?.[1]
+  const slashItems = slashQ === undefined || slashOff ? [] : matchSlash([...custom, ...(BUILTIN_SLASH[agent?.providerId ?? ''] ?? [])], slashQ).slice(0, 60)
+  const slashOpen = slashItems.length > 0
+  useEffect(() => setSlashSel(0), [slashQ])
+  useEffect(() => {
+    if (!text.startsWith('/')) setSlashOff(false)
+  }, [text])
+  useEffect(() => {
+    slashList.current?.querySelector('.on')?.scrollIntoView({ block: 'nearest' })
+  }, [slashSel])
+  const pickSlash = (c: SlashCommand, run: boolean): void => {
+    if (run) void send('auto', `/${c.name}`)
+    else {
+      setText(`/${c.name} `)
+      ta.current?.focus()
+    }
+  }
+
   // ⌘⇧2 screenshots and ⌘K "insert prompt" land in the visible composer
   useEffect(() => {
     if (pending.length) setShots((s) => [...s, ...useStore.getState().takeShots()])
@@ -67,14 +95,14 @@ export function Composer({ agentId, compact }: { agentId: string; compact?: bool
     ta.current?.focus()
   }, [insert])
 
-  const message = (): string => {
-    const t = text.trim()
+  const message = (override?: string): string => {
+    const t = (override ?? text).trim()
     const att = shots.map((s) => `[Screenshot: ${s.path}]`).join('\n')
     return [t, att && `${att}\n(Look at the attached image file${shots.length > 1 ? 's' : ''}.)`].filter(Boolean).join('\n\n')
   }
 
-  const send = async (mode: 'auto' | 'queue' = 'auto'): Promise<void> => {
-    const m = message()
+  const send = async (mode: 'auto' | 'queue' = 'auto', override?: string): Promise<void> => {
+    const m = message(override)
     if (!m) return
     try {
       if (!running) {
@@ -196,6 +224,18 @@ export function Composer({ agentId, compact }: { agentId: string; compact?: bool
           ))}
         </div>
       )}
+      {slashOpen && (
+        <div className="slash-menu" ref={slashList} onMouseDown={(e) => e.preventDefault()}>
+          {slashItems.map((c, i) => (
+            <button key={`${c.source}:${c.name}`} className={`slash-item ${i === slashSel ? 'on' : ''}`} onMouseEnter={() => setSlashSel(i)} onClick={() => pickSlash(c, true)}>
+              <b className="mono">/{c.name}</b>
+              <span className="slash-desc">{c.desc}</span>
+              {c.source !== 'built-in' && <span className="slash-src">{c.source}</span>}
+            </button>
+          ))}
+          <div className="slash-hint">↑↓ choose · Enter run · Tab add arguments · Esc close</div>
+        </div>
+      )}
       <textarea
         ref={ta}
         rows={compact ? 2 : 3}
@@ -216,6 +256,26 @@ export function Composer({ agentId, compact }: { agentId: string; compact?: bool
           }
         }}
         onKeyDown={(e) => {
+          if (slashOpen && !e.nativeEvent.isComposing) {
+            const n = slashItems.length
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              e.preventDefault()
+              setSlashSel((i) => (i + (e.key === 'ArrowDown' ? 1 : n - 1)) % n)
+              return
+            }
+            if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+              e.preventDefault()
+              const c = slashItems[Math.min(slashSel, n - 1)]
+              // Enter runs the command, Tab completes it so you can add arguments
+              pickSlash(c, e.key === 'Enter')
+              return
+            }
+            if (e.key === 'Escape') {
+              e.preventDefault()
+              setSlashOff(true)
+              return
+            }
+          }
           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault()
             if ((e.metaKey || e.ctrlKey) && running) {

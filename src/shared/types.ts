@@ -343,6 +343,8 @@ export interface AppSettings {
   skipVersion?: string
   /** new agents alternate between Claude Code and Codex */
   alternateCli?: boolean
+  /** new projects start with the agents of this project ('' / unset = the first project with agents, 'none' = off) */
+  newProjectAgents?: string
   /** after a usage limit, continue automatically when the window resets */
   resumeOnReset?: boolean
   /** pass Hive's and the shared MCP servers to Codex agents (-c mcp_servers…) */
