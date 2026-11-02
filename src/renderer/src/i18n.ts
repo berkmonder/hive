@@ -424,7 +424,11 @@ const TR: Record<string, string> = {
   "Skip this version": "Bu sürümü atla",
   "What's new": "Yenilikler",
   "Restarting…": "Yeniden başlıyor…",
-  "New versions come from GitHub Releases. Installing downloads the right file for this computer, swaps it in and restarts Hive.": "Yeni sürümler GitHub Releases'ten gelir. Kurulum bu bilgisayara uygun dosyayı indirir, yerine koyar ve Hive'ı yeniden başlatır."
+  "New versions come from GitHub Releases. Installing downloads the right file for this computer, swaps it in and restarts Hive.": "Yeni sürümler GitHub Releases'ten gelir. Kurulum bu bilgisayara uygun dosyayı indirir, yerine koyar ve Hive'ı yeniden başlatır.",
+  "Default account": "Varsayılan hesap",
+  "used by every Claude Code agent unless its project or the agent picks another": "projesi ya da ajan başka hesap seçmedikçe her Claude Code ajanı bunu kullanır",
+  "Skip": "Atla",
+  "is available": "çıktı"
 }
 
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [
@@ -441,6 +445,7 @@ const PATTERNS: [RegExp, (...m: string[]) => string][] = [
   [/^ · used by (\d+) agents?$/, (_, n) => ` · ${n} ajan kullanıyor`],
   [/^Hive (\S+) is available$/, (_, v) => `Hive ${v} çıktı`],
   [/^(\d+) prompts?$/, (_, n) => `${n} prompt`],
+  [/^used by every (.+) agent unless its project or the agent picks another$/, (_, n) => `projesi ya da ajan başka hesap seçmedikçe her ${n} ajanı bunu kullanır`],
   [/^(.+) asks$/, (_, n) => `${n} soruyor`],
   [/^Sign in · (.+)$/, (_, n) => `Giriş yap · ${n}`],
   [/^Import from (.+)$/, (_, n) => `${n} kaynağından aktar`],

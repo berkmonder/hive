@@ -90,14 +90,30 @@ export function AccountsSettings() {
                     <Icon name="users" size={12} />
                     <input value={a.name} onChange={(e) => saveAccounts(s.accounts.map((x) => (x.id === a.id ? { ...x, name: e.target.value } : x)))} />
                     <span className="muted small">{status[a.id] ?? ''}{(() => {
-                      const n = app.agents.filter((g) => g.providerId === a.providerId && (g.accountId === a.id || (g.accountId === undefined && app.projectSettings[g.projectId]?.accounts?.[a.providerId] === a.id))).length
-                      return n ? ` · used by ${n} agent${n === 1 ? '' : 's'}` : ' · not used yet – pick it per agent (Edit) or per project (Workspace → Automation)'
+                      const pick = (g: (typeof app.agents)[number]): string => {
+                        if (g.accountId !== undefined) return g.accountId
+                        const pr = app.projectSettings[g.projectId]?.accounts?.[g.providerId]
+                        return pr === '__main' ? '' : pr || s.defaultAccounts?.[g.providerId] || ''
+                      }
+                      const n = app.agents.filter((g) => g.providerId === a.providerId && pick(g) === a.id).length
+                      return n ? ` · used by ${n} agent${n === 1 ? '' : 's'}` : ' · not used yet – make it the default below, or pick it per project / agent'
                     })()}</span>
                     <div className="spacer" />
                     <button className="btn ghost sm" onClick={() => setSignin({ providerId: p.id, account: a })}>Sign in</button>
                     <button className="icon-btn danger" title="Remove account" onClick={() => saveAccounts(s.accounts.filter((x) => x.id !== a.id))}><Icon name="trash" size={12} /></button>
                   </div>
                 ))}
+                {s.accounts.some((a) => a.providerId === p.id) && (
+                  <div className="acc-row acc-default">
+                    <Icon name="check" size={12} />
+                    <span>Default account</span>
+                    <select value={s.defaultAccounts?.[p.id] ?? ''} onChange={(e) => saveSettings({ defaultAccounts: { ...(s.defaultAccounts ?? {}), [p.id]: e.target.value } })}>
+                      <option value="">Main login</option>
+                      {s.accounts.filter((a) => a.providerId === p.id).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                    <span className="muted small">used by every {p.name} agent unless its project or the agent picks another</span>
+                  </div>
+                )}
                 <button className="link-btn" onClick={() => saveAccounts([...s.accounts, { id: newId(), providerId: p.id as 'claude' | 'codex', name: `${p.name} account ${s.accounts.filter((a) => a.providerId === p.id).length + 2}` }])}>
                   <Icon name="plus" size={12} /> Add another {p.name} account
                 </button>
@@ -169,7 +185,8 @@ export function ProjectAccounts({ projectId }: { projectId: string }) {
         {(['claude', 'codex'] as const).map((pid) => (
           <div key={pid} className="set-row"><div className="set-label"><b>{pid === 'claude' ? 'Claude Code' : 'Codex'}</b></div>
             <div className="set-control"><select value={ps.accounts?.[pid] ?? ''} onChange={(e) => set(pid, e.target.value)}>
-              <option value="">Main login</option>
+              <option value="">Default ({app.settings.accounts.find((a) => a.id === app.settings.defaultAccounts?.[pid])?.name ?? 'Main login'})</option>
+              <option value="__main">Main login</option>
               {app.settings.accounts.filter((a) => a.providerId === pid).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select></div>
           </div>
@@ -532,12 +549,13 @@ export async function installUpdate(): Promise<void> {
     err(e)
   }
 }
-export function UpdateBanner() {
+/** top-right icon: lights up when a new Hive version is available */
+export function UpdateButton() {
   const [u, setU] = useState<Upd | null>(null)
+  const [open, setOpen] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
-  const [notes, setNotes] = useState(false)
   useEffect(() => {
-    const a = window.api.updates.onAvailable(setU)
+    const a = window.api.updates.onAvailable((x) => setU(x))
     const b = window.api.updates.onProgress(setProgress)
     return () => {
       a()
@@ -545,28 +563,32 @@ export function UpdateBanner() {
     }
   }, [])
   if (!u) return null
-  const what = u.notes.split(/\n## Download/)[0].trim()
+  const what = u.notes.split(/\n## Download/)[0].replace(/^## What's new\s*/, '').trim()
   return (
-    <div className="update-bar">
-      <Icon name="sparkle" size={14} />
-      <span><b>Hive {u.version}</b> is available</span>
-      {what && <button className="link-btn" onClick={() => setNotes(!notes)}>What's new</button>}
-      <div className="spacer" />
-      {progress !== null && progress < 1 ? (
-        <span className="upd-progress"><i style={{ width: `${Math.round(progress * 100)}%` }} /> {Math.round(progress * 100)}%</span>
-      ) : progress === 1 ? (
-        <span className="muted small">Restarting…</span>
-      ) : (
-        <>
-          <button className="btn ghost sm" onClick={() => { window.api.updates.skip(u.version); setU(null) }}>Skip this version</button>
-          <button className="btn ghost sm" onClick={() => setU(null)}>Later</button>
-          <button className="btn sm" onClick={() => { setProgress(0); installUpdate().finally(() => setProgress((p) => (p === 1 ? 1 : null))) }}>
-            {u.canInstall ? 'Install & restart' : 'Download'}
-          </button>
-        </>
+    <span className="upd-wrap">
+      <button className={`icon-btn upd-btn ${open ? 'on' : ''}`} title={`Hive ${u.version} is available`} onClick={() => setOpen(!open)}>
+        <Icon name="sparkle" />
+        <i className="upd-dot" />
+      </button>
+      {open && (
+        <div className="upd-pop" onMouseLeave={() => progress === null && setOpen(false)}>
+          <div className="upd-head"><b>Hive {u.version}</b><span className="muted small">is available</span></div>
+          {what && <pre className="upd-notes">{what}</pre>}
+          {progress !== null ? (
+            <div className="upd-progress"><i style={{ width: `${Math.round(progress * 100)}%` }} /> <span>{progress >= 1 ? 'Restarting…' : `${Math.round(progress * 100)}%`}</span></div>
+          ) : (
+            <div className="row">
+              <button className="btn ghost sm" onClick={() => { window.api.updates.skip(u.version); setU(null) }}>Skip</button>
+              <div className="spacer" />
+              <button className="btn ghost sm" onClick={() => setOpen(false)}>Later</button>
+              <button className="btn sm" onClick={() => { setProgress(0); installUpdate().finally(() => setProgress((p) => (p === 1 ? 1 : null))) }}>
+                {u.canInstall ? 'Install & restart' : 'Download'}
+              </button>
+            </div>
+          )}
+        </div>
       )}
-      {notes && what && <div className="update-notes md-body" onClick={() => setNotes(false)}><pre>{what}</pre></div>}
-    </div>
+    </span>
   )
 }
 

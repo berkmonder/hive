@@ -320,6 +320,8 @@ export interface AppSettings {
   commitContext: boolean
   /** extra sign-ins (multi-account) */
   accounts: Account[]
+  /** account every agent uses unless the project or the agent picks another ('' = your normal login) */
+  defaultAccounts?: Record<string, string>
   /** on a usage limit: continue on the next account of the same CLI */
   autoSwitch: boolean
   /** …or, when there is none, hand the task to this CLI ('' = off) */

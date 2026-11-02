@@ -50,8 +50,16 @@ export function ensureAccountDir(acc: Account): string {
   }
   return dir
 }
+/** agent's own choice → project default → Hive-wide default ('' / '__main' = your normal login) */
+export function resolveAccountId(agent: Agent): string | undefined {
+  if (agent.accountId !== undefined) return agent.accountId || undefined
+  const proj = getState().projectSettings[agent.projectId]?.accounts?.[agent.providerId]
+  if (proj === '__main') return undefined
+  if (proj) return proj
+  return getState().settings.defaultAccounts?.[agent.providerId] || undefined
+}
 export function accountEnv(agent: Agent): Record<string, string> {
-  const id = agent.accountId === '' ? undefined : agent.accountId ?? getState().projectSettings[agent.projectId]?.accounts?.[agent.providerId]
+  const id = resolveAccountId(agent)
   const acc = getState().settings.accounts.find((a) => a.id === id)
   if (!acc || acc.providerId !== agent.providerId) return {}
   const dir = ensureAccountDir(acc)
@@ -185,7 +193,7 @@ export function registerMore(ctx: FeatureCtx): { onData: (agentId: string, data:
     const st = getState().settings
     if (!a || !st.autoSwitch) return
     const pool: (Account | undefined)[] = [undefined, ...st.accounts.filter((x) => x.providerId === a.providerId)]
-    const cur = a.accountId === '' ? undefined : a.accountId ?? getState().projectSettings[a.projectId]?.accounts?.[a.providerId]
+    const cur = resolveAccountId(a)
     const i = pool.findIndex((x) => (x?.id ?? undefined) === cur)
     const next = pool.length > 1 ? pool[(i + 1) % pool.length] : null
     const sessions = a.sessions ?? []
