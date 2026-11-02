@@ -182,6 +182,8 @@ export interface AppState {
   workflowRuns: WorkflowRun[]
   ideas: Idea[]
   triggers: Trigger[]
+  /** mock API servers */
+  mocks?: MockServer[]
   /** what was running when Hive quit (session restore) */
   lastRunning?: { agents: string[]; servers: string[]; at: number }
 }
@@ -485,4 +487,47 @@ export interface UpdateInfo {
   url: string
   asset?: { name: string; url: string; size: number }
   canInstall: boolean
+}
+
+/** A local mock API: fixed routes, optional fallback to a real backend, request log */
+export interface MockServer {
+  id: string
+  projectId: string
+  name: string
+  port: number
+  /** started with Hive */
+  autoStart: boolean
+  /** unmatched requests go here (e.g. https://api.example.com) */
+  fallbackUrl?: string
+  /** save proxied answers as new routes */
+  record?: boolean
+  /** extra delay for every answer (ms) */
+  latencyMs?: number
+  routes: MockRoute[]
+}
+export interface MockRoute {
+  id: string
+  /** GET, POST, … or ANY */
+  method: string
+  /** /users/:id, /files/*, … */
+  path: string
+  status: number
+  /** response body – {{params.id}}, {{query.q}}, {{body.name}}, {{uuid}}, {{now}} are filled in */
+  body: string
+  /** "Header: value" per line */
+  headers?: string
+  delayMs?: number
+  enabled: boolean
+  note?: string
+}
+export interface MockLogEntry {
+  mockId: string
+  at: number
+  method: string
+  path: string
+  status: number
+  ms: number
+  routeId?: string
+  proxied?: boolean
+  body?: string
 }

@@ -14,6 +14,7 @@ import { usageReport } from './usage'
 import { registerFeatures } from './features'
 import { registerAutomation } from './automation'
 import { registerExtras } from './extras'
+import { registerMocks } from './mock'
 import { registerInsights, secretEnv, secretValues } from './insights'
 import { registerRemote } from './remote'
 import { findSessions } from './otherclis'
@@ -578,6 +579,7 @@ app.whenReady().then(async () => {
   features = registerFeatures(fctx)
   automation = registerAutomation(fctx)
   extras = registerExtras(fctx)
+  registerMocks({ send, broadcastState })
   // Codex / Gemini have no SessionStart hook: find their session files by folder + start time
   setInterval(() => {
     const st = getState()

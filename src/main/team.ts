@@ -9,6 +9,7 @@
  *  Member tool: report_to_lead
  */
 import { BROWSER_TOOLS, browserTool } from './browser'
+import { MOCK_TOOLS, mockTool, runningMocks } from './mock'
 import { app } from 'electron'
 import { IncomingMessage, ServerResponse } from 'http'
 import { mkdirSync, writeFileSync } from 'fs'
@@ -206,6 +207,9 @@ function instructionsFor(me: Agent): string {
   const skills = getState().skills
   if (skills.length)
     parts.push('SKILLS (step-by-step procedures; call get_skill before doing one of these):\n' + skills.map((s) => `- ${s.name}: ${s.description}`).join('\n'))
+  const mocks = runningMocks(me.projectId)
+  if (mocks.length)
+    parts.push('MOCK APIs running in Hive (use them instead of real backends while developing; add routes with mock_route, see calls with mock_logs):\n' + mocks.map((m) => `- ${m.name}: ${m.url} (${m.routes} routes)`).join('\n'))
   if (getState().settings.browserTools !== false)
     parts.push('QA BROWSER: to check UI changes, open the running dev server with browser_open, interact with browser_click / browser_type, look with browser_screenshot and check browser_console for errors before you say a UI task is done.')
   if (kids.length)
@@ -328,6 +332,7 @@ function toolsFor(me: Agent): object[] {
       }
     )
   if (getState().settings.browserTools !== false) tools.push(...BROWSER_TOOLS)
+  tools.push(...MOCK_TOOLS)
   if (me.parentId) {
     tools.push({
       name: 'report_to_lead',
@@ -480,6 +485,7 @@ async function callTool(me: Agent, name: string, args: Record<string, unknown>):
 
     default:
       if (name.startsWith('browser_') && getState().settings.browserTools !== false) return browserTool(me.id, me.name, name, args)
+      if (name.startsWith('mock_')) return mockTool(me.projectId, name, args)
       throw new Error(`Unknown tool ${name}`)
   }
 }

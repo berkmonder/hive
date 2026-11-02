@@ -5,6 +5,7 @@ import { clamp, useLayout } from '../layout'
 import { Terminal } from './Terminal'
 import { Resizer } from './Resizer'
 import { Icon, cleanError } from './common'
+import { MockEditor, MockList } from './Mocks'
 
 const uid = (): string => `srv-${Math.random().toString(36).slice(2, 9)}`
 const DEVICES = { desktop: { w: 0, label: 'Desktop', icon: 'monitor' }, tablet: { w: 820, label: 'Tablet', icon: 'tablet' }, mobile: { w: 390, label: 'Mobile', icon: 'phone' } } as const
@@ -17,6 +18,7 @@ export function ServersView() {
   const project = app.projects.find((p) => p.id === selectedProjectId)!
   const list = app.servers.filter((s) => s.projectId === project.id)
   const [sel, setSel] = useState<string | null>(list[0]?.id ?? null)
+  const [mockSel, setMockSel] = useState<string | null>(null)
   const [tab, setTab] = useState<'preview' | 'terminal'>('terminal')
   const [editing, setEditing] = useState<DevServer | null>(null)
   const [suggestions, setSuggestions] = useState<{ name: string; command: string; cwd: string }[]>([])
@@ -65,7 +67,7 @@ export function ServersView() {
           const r = serverRuntimes[s.id]
           const u = s.url || r?.url
           return (
-            <div key={s.id} role="button" tabIndex={0} className={`srv-item ${s.id === sel ? 'on' : ''}`} onClick={() => setSel(s.id)}>
+            <div key={s.id} role="button" tabIndex={0} className={`srv-item ${s.id === sel && !mockSel ? 'on' : ''}`} onClick={() => { setSel(s.id); setMockSel(null) }}>
               <i className={`dot ${r?.running ? (u ? 'done' : 'working') : r?.exitCode ? 'waiting' : 'idle'}`} />
               <div className="srv-txt">
                 <b>{s.name}</b>
@@ -96,11 +98,14 @@ export function ServersView() {
             ))}
           </>
         )}
+        <MockList projectId={project.id} sel={mockSel} onSel={setMockSel} />
       </aside>
       <Resizer axis="x" onStart={() => (base.current = L.serversW)} onDrag={(d) => L.set({ serversW: clamp(base.current + d, 200, 480) })} onReset={() => L.reset('serversW')} />
 
       <section className="srv-main">
-        {!cur ? (
+        {mockSel ? (
+          <MockEditor key={mockSel} id={mockSel} onGone={() => setMockSel(null)} />
+        ) : !cur ? (
           <div className="welcome">
             <Icon name="server" size={28} />
             <p className="muted">Run your app's dev server here and preview it while agents work.</p>

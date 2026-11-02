@@ -162,6 +162,7 @@ for a downloaded build use right-click → *Open* or `xattr -cr /Applications/Hi
 
 ### Built-in tools
 - **Code editor** (Monaco): explorer with git colours, tabs, quick open, IntelliSense with auto-import, markdown preview, auto save, VS Code / JetBrains keymaps, *Open in IDE* (VS Code, Cursor, JetBrains IDEs, Zed…).
+- **Mock APIs** (Dev servers → Mock APIs): local fake backends with routes (`/users/:id`), templated JSON answers (`{{params.id}}`, `{{body.name}}`, `{{uuid}}`), status, headers and delays, CORS included; fall back to the real API and **record** its answers; generate routes from a description with Claude or import an OpenAPI file; live request log. Agents add routes with `mock_route` and check calls with `mock_logs`.
 - **Dev servers** with detected commands and a **live preview** (device widths, auto-reload).
 - **Share** a dev server – or the webhook port – on a public HTTPS URL (Cloudflare quick tunnel via `cloudflared`, falls back to localtunnel).
 - **Usage & cost:** tokens and estimated cost per agent and per day from Claude Code, Codex and Gemini session logs.

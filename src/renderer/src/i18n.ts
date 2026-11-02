@@ -430,7 +430,25 @@ const TR: Record<string, string> = {
   "Skip": "Atla",
   "is available": "çıktı",
   "Menu bar icon": "Menü çubuğu simgesi",
-  "Hive in the menu bar (next to Wi-Fi and volume): how many agents need you, the agent list with their status, pause all, quit.": "Hive menü çubuğunda (Wi-Fi ve ses simgelerinin yanında): seni bekleyen ajan sayısı, durumlarıyla ajan listesi, hepsini duraklat, çık."
+  "Hive in the menu bar (next to Wi-Fi and volume): how many agents need you, the agent list with their status, pause all, quit.": "Hive menü çubuğunda (Wi-Fi ve ses simgelerinin yanında): seni bekleyen ajan sayısı, durumlarıyla ajan listesi, hepsini duraklat, çık.",
+  "Mock APIs": "Mock API'ler",
+  "New mock API": "Yeni mock API",
+  "Fake a backend: fixed routes with JSON answers, CORS included. Agents can add routes too.": "Sahte bir backend: JSON cevaplı sabit route'lar, CORS dahil. Ajanlar da route ekleyebilir.",
+  "Unmatched requests go to": "Eşleşmeyen istekler şuraya gider",
+  "Record": "Kaydet",
+  "Latency": "Gecikme",
+  "Start with Hive": "Hive ile başlat",
+  "Route": "Route",
+  "Response body": "Cevap gövdesi",
+  "Headers": "Başlıklar",
+  "Try it": "Dene",
+  "Delete route": "Route'u sil",
+  "Requests": "İstekler",
+  "Generate routes": "Route üret",
+  "Import OpenAPI": "OpenAPI içe aktar",
+  "Add a route, generate them from a description, or import an OpenAPI file.": "Route ekle, bir açıklamadan ürettir ya da OpenAPI dosyası içe aktar.",
+  "Delete mock": "Mock'u sil",
+  "Copy the base URL": "Temel URL'yi kopyala"
 }
 
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [

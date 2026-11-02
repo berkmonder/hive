@@ -33,7 +33,8 @@ export function loadState(): AppState {
         workflows: raw.workflows ?? [],
         workflowRuns: raw.workflowRuns ?? [],
         ideas: raw.ideas ?? [],
-        triggers: raw.triggers ?? []
+        triggers: raw.triggers ?? [],
+        mocks: raw.mocks ?? []
       }
     }
   } catch (err) {

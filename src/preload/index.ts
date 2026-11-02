@@ -3,7 +3,7 @@ import type { UsageReport } from '@shared/usage'
 import type { Conversation } from '@shared/chat'
 import type { ProcInfo } from '@shared/procs'
 import type { ReplayTurn, WeeklyReport } from '@shared/insights'
-import type { AgentRuntime, AppState, GitSummary, NewAgentInput, Agent, AgentPatch, Project, TeamEvent, RoleDef, SavedPrompt, DevServer, ServerRuntime, AppSettings, Provider, Task, TaskStatus, Schedule, Skill, McpServerDef, ProjectSettings, TestResult, Workflow, WorkflowRun, PlanReview, Conflict, Trigger, PickedElement, DbConnection, Account, AgentQuestion, UpdateInfo } from '@shared/types'
+import type { AgentRuntime, AppState, GitSummary, NewAgentInput, Agent, AgentPatch, Project, TeamEvent, RoleDef, SavedPrompt, DevServer, ServerRuntime, AppSettings, Provider, Task, TaskStatus, Schedule, Skill, McpServerDef, ProjectSettings, TestResult, Workflow, WorkflowRun, PlanReview, Conflict, Trigger, PickedElement, DbConnection, Account, AgentQuestion, UpdateInfo, MockServer, MockLogEntry } from '@shared/types'
 
 function on<T>(channel: string, cb: (payload: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, payload: T): void => cb(payload)
@@ -248,6 +248,21 @@ const api = {
     onProgress: (cb: (p: number) => void) => on('update:progress', cb)
   },
   showQaBrowser: (agentId: string): Promise<boolean> => ipcRenderer.invoke('qa:show', agentId),
+  mocks: {
+    save: (m: MockServer): Promise<void> => ipcRenderer.invoke('mocks:save', m),
+    remove: (id: string): Promise<void> => ipcRenderer.invoke('mocks:remove', id),
+    start: (id: string): Promise<void> => ipcRenderer.invoke('mocks:start', id),
+    stop: (id: string): Promise<void> => ipcRenderer.invoke('mocks:stop', id),
+    state: (): Promise<Record<string, boolean>> => ipcRenderer.invoke('mocks:state'),
+    logs: (id: string): Promise<MockLogEntry[]> => ipcRenderer.invoke('mocks:logs', id),
+    clearLogs: (id: string): Promise<void> => ipcRenderer.invoke('mocks:clearLogs', id),
+    freePort: (): Promise<number> => ipcRenderer.invoke('mocks:freePort'),
+    try: (url: string, method: string, body?: string): Promise<{ status: number; ms: number; text: string }> => ipcRenderer.invoke('mocks:try', url, method, body),
+    openapi: (id: string, text: string): Promise<number> => ipcRenderer.invoke('mocks:openapi', id, text),
+    generate: (id: string, description: string): Promise<number> => ipcRenderer.invoke('mocks:generate', id, description),
+    onLog: (cb: (e: MockLogEntry) => void) => on('mock:log', cb),
+    onState: (cb: (s: Record<string, boolean>) => void) => on('mock:state', cb)
+  },
   advisor: (projectId: string, task: string): Promise<{ agentId: string; reason: string }> => ipcRenderer.invoke('advisor:suggest', projectId, task),
   questions: {
     list: (): Promise<AgentQuestion[]> => ipcRenderer.invoke('questions:list'),
