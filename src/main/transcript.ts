@@ -94,7 +94,7 @@ export async function readConversation(path: string, limit = 400): Promise<Conve
         seen.add(key)
         if (b.type === 'text' && b.text?.trim()) items.push({ kind: 'assistant', text: b.text.trim(), at })
         else if (b.type === 'tool_use' && b.name) {
-          const item: ChatItem = { kind: 'tool', text: toolSummary(b.name, b.input), tool: b.name, input: JSON.stringify(b.input ?? {}, null, 2).slice(0, 4000), at }
+          const item: ChatItem = { kind: 'tool', text: toolSummary(b.name, b.input), tool: b.name, input: JSON.stringify(b.input ?? {}, null, 2).slice(0, 30000), at }
           if (b.id) tools.set(b.id, item)
           items.push(item)
         }

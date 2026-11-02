@@ -1470,3 +1470,65 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .mock-ed .srv-bar input { height: 32px; }
 .mock-ed .srv-bar .link-btn { align-self: center; }
 .terminal { overflow: hidden; }
+
+/* ---------- conversation (Claude Code in VS Code style) ---------- */
+.cc { height: 100%; overflow: auto; background: var(--bg-2); padding: 18px 0 28px; }
+.cc-col { max-width: 820px; margin: 0 auto; padding: 0 22px; display: flex; flex-direction: column; gap: 4px; }
+.cc .chat-body { padding: 0 !important; background: none !important; border: 0 !important; border-radius: 0; font-size: 13.5px !important; line-height: 1.65 !important; }
+.cc-user { position: relative; margin: 14px 0 8px; padding: 10px 14px; border-radius: 8px; background: var(--panel); border: 1px solid var(--border-2); }
+.cc-user .chat-body { color: var(--text); }
+.cc-user time { position: absolute; right: 10px; bottom: -16px; font-size: 10.5px; color: var(--dim); opacity: 0; transition: opacity .15s; }
+.cc-user:hover time { opacity: 1; }
+.cc-item { position: relative; padding: 3px 0 3px 22px; }
+.cc-item::before { content: ''; position: absolute; left: 4px; top: 11px; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.cc-item::after { content: ''; position: absolute; left: 7px; top: 22px; bottom: -6px; width: 1px; background: var(--border); }
+.cc-item:last-of-type::after, .cc-item:has(+ .cc-user)::after, .cc-item:has(+ .cc-working)::after { display: none; }
+.cc-text::before { background: #d97757; }
+.cc-text { padding-top: 4px; padding-bottom: 6px; }
+.cc-text .chat-speak { position: absolute; right: -28px; top: 2px; }
+.cc-text:hover .chat-speak { opacity: 1; }
+.cc-tool::before { background: #4ade80; }
+.cc-tool.err::before { background: #f87171; }
+.cc-tool.pending::before { background: var(--muted); animation: pulse 1.2s infinite; }
+.cc-line { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; }
+.cc-line b { font-weight: 700; color: var(--text); flex: none; }
+.cc-arg, .cc-file { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--muted); }
+.cc-file { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; color: var(--accent-2); }
+.cc-file:hover { text-decoration: underline; }
+.cc-sum { font-size: 12px; color: var(--dim); flex: none; }
+.cc-errtag { font-size: 11px; color: #f87171; flex: none; }
+.cc-chev { margin-left: auto; color: var(--dim); transition: transform .15s; flex: none; }
+.cc-chev.open { transform: rotate(90deg); }
+.cc-diff { margin: 6px 0 4px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; font-size: 11.5px; line-height: 1.55; background: var(--bg); }
+.cc-diff > div { display: flex; white-space: pre-wrap; word-break: break-word; padding: 0 10px 0 0; }
+.cc-diff > div > span { flex: none; width: 22px; text-align: center; opacity: .7; user-select: none; }
+.cc-diff .add { background: rgba(46, 160, 67, .14); color: #aff5b4; }
+.cc-diff .del { background: rgba(248, 81, 73, .13); color: #ffc1bc; }
+:root[data-theme="light"] .cc-diff .add { color: #116329; } :root[data-theme="light"] .cc-diff .del { color: #82071e; }
+.cc-more { display: block; width: 100%; border: 0; border-top: 1px solid var(--border); background: none; color: var(--muted); font-size: 11.5px; padding: 4px; cursor: pointer; }
+.cc-more:hover { color: var(--text); }
+.cc-io { margin: 6px 0 4px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--bg); }
+.cc-io-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); border-top: 1px solid var(--border); }
+.cc-io-row:first-child { border-top: 0; }
+.cc-io-row > span { font: 700 10px ui-monospace, Menlo, monospace; color: var(--dim); padding: 7px 0 0 8px; }
+.cc-io pre, .cc-out pre { margin: 0; padding: 6px 10px; font-size: 11.5px; white-space: pre-wrap; word-break: break-word; max-height: 360px; overflow: auto; color: var(--code-text, var(--text)); }
+.cc-out { min-width: 0; }
+.cc-out .cc-more { text-align: left; padding-left: 10px; }
+.cc-raw { margin: 6px 0; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); overflow: hidden; }
+.cc-raw > pre { margin: 0; padding: 6px 10px; font-size: 11.5px; max-height: 260px; overflow: auto; white-space: pre-wrap; border-bottom: 1px solid var(--border); }
+.cc-todos { list-style: none; margin: 6px 0 4px; padding: 0; font-size: 12.5px; display: flex; flex-direction: column; gap: 3px; }
+.cc-todos li { display: flex; gap: 8px; color: var(--text); }
+.cc-todos li i { font-style: normal; width: 14px; color: var(--muted); }
+.cc-todos li.completed { color: var(--muted); text-decoration: line-through; }
+.cc-todos li.completed i { color: #4ade80; }
+.cc-todos li.in_progress { font-weight: 600; }
+.cc-todos li.in_progress i { color: #d97757; }
+.cc-working { display: flex; align-items: center; gap: 8px; padding: 8px 0 0 2px; font-size: 13px; color: #d97757; }
+.cc-spark { display: inline-block; animation: ccSpin 2.4s linear infinite; }
+@keyframes ccSpin { to { transform: rotate(360deg); } }
+.shimmer { background: linear-gradient(90deg, var(--muted) 0%, var(--text) 50%, var(--muted) 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: ccShimmer 2s linear infinite; max-width: 640px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes ccShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.cc-turn { padding: 10px 0 0 22px; }
+.cc-hello { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.cc-hello b { font-size: 16px; }
+.cc-todos li.completed i { text-decoration: none; }

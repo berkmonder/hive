@@ -151,7 +151,7 @@ function parseCodex(path: string): Parsed {
           /* keep raw */
         }
         const cmd = Array.isArray(args.command) ? (args.command as string[]).join(' ') : String(args.command ?? args.path ?? p.input ?? '')
-        const it: ChatItem = { kind: 'tool', tool: p.name ?? 'shell', text: `${p.name ?? 'shell'}(${cmd.replace(/^bash -lc /, '').slice(0, 90)})`, input: JSON.stringify(args, null, 2).slice(0, 4000), at }
+        const it: ChatItem = { kind: 'tool', tool: p.name ?? 'shell', text: `${p.name ?? 'shell'}(${cmd.replace(/^bash -lc /, '').slice(0, 90)})`, input: JSON.stringify(args, null, 2).slice(0, 30000), at }
         items.push(it)
         if (p.call_id) calls.set(p.call_id, it)
       } else if ((p.type === 'function_call_output' || p.type === 'custom_tool_call_output') && p.call_id) {
@@ -199,7 +199,7 @@ function parseGemini(path: string): Parsed {
           kind: 'tool',
           tool: tc.name,
           text: `${tc.displayName ?? tc.name}${arg ? `(${arg})` : ''}`,
-          input: JSON.stringify(args, null, 2).slice(0, 4000),
+          input: JSON.stringify(args, null, 2).slice(0, 30000),
           result: textOf(tc.result?.map?.((r: { functionResponse?: { response?: { output?: string } } }) => ({ text: r.functionResponse?.response?.output ?? '' })) ?? '').slice(0, 4000),
           error: tc.status === 'error',
           at
